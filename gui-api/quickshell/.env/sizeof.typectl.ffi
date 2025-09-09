@@ -1,0 +1,8 @@
+#include  <shellpc.io>
+#include  <shellbackend.io>
+#include  <guisensivity.tpio> // * non its tpu is typectl io settings 
+#$root DEFINE POLICY SETTINGS MAX ABILITY;
+<LIST_G> {
+backend_p overlay_%(*listing)&LISTING_FOR_API SYSCALL DEPLOY x01122201
+*()IT backend_s overlay_%(*listing)&LISTING_FOR_SIZE MEMORY_OF_PCI _SET_ UNLINE &memctl (sizeof)_typectl _free 2048M //* this api memory struct free space in automaticility becauseing can if change dont compability.
+

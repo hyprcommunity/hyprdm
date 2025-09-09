@@ -1,0 +1,25 @@
+[package]
+name = "hdm_api"
+version = "0.1.0"
+edition = "2021"
+authors = ["Zaman Huseynli <admin@azccriminal.space>"]
+description = "Hyprdm hdm_api"
+license = "BSD-3-Clause"
+
+[lib]
+name = "hdm_api"
+crate-type = ["cdylib"]  # FFI shared library
+
+[dependencies]
+once_cell = "1.17.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+smithay-client-toolkit = "0.17.0"
+otpauth = "0.5.0"          # oath yerine otpauth kullanıldı
+digest = "0.10"
+smithay = "0.3"
+pam-client = "0.1"
+
+# Local dependency: config crate
+config = { path = "../config" }
+slog = "2.7.0"

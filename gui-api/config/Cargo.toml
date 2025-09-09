@@ -1,0 +1,15 @@
+[package]
+name = "config"
+version = "0.1.0"
+edition = "2021"
+authors = ["Zaman Huseynli <admin@azccriminal.space>"]
+description = "Configuration management for Hyprdm"
+license = "BSD-3-Clause"
+
+[lib]
+name = "config"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
