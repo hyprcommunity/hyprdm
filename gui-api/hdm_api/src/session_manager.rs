@@ -1,6 +1,5 @@
 use std::process::{Command, Child};
 use std::fs;
-use std::path::Path;
 
 /// Represents a Wayland session
 #[derive(Debug)]

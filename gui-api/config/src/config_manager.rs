@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::process::Command;
-use crate::parser::{HDMConfig, load_or_create_config};
+use crate::parser::load_or_create_config;
 
 pub struct ConfigManager;
 
@@ -8,7 +8,6 @@ impl ConfigManager {
     pub fn run() {
         let config_path = Path::new("/etc/hyprdm/hyprdm.conf");
 
-        // Load existing config or create default
         let config = match load_or_create_config(config_path) {
             Ok(cfg) => cfg,
             Err(e) => {
@@ -31,23 +30,67 @@ impl ConfigManager {
         }
         println!("Systemctl usedefine: {}", config.systemctl_usedefine);
 
-        // Handle autologin or systemctl
-        if config.autologin {
-            println!("Autologin is enabled. User session will start automatically.");
-        } else if config.systemctl_usedefine {
-            println!("Systemctl service will be enabled.");
-            let status = Command::new("systemctl")
-                .arg("status")
-                .arg("hdm.service")
-                .status();
+        let service_path = "/etc/systemd/system/hdm.service";
 
-            match status {
-                Ok(s) if s.success() => println!("hdm.service is active"),
-                Ok(_) => println!("hdm.service exists but is not active"),
-                Err(e) => eprintln!("Failed to check systemctl status: {}", e),
+        match (config.autologin, config.systemctl_usedefine) {
+            (true, false) => {
+                println!("Autologin enabled, systemctl service disabled.");
+                // Oturum başlatma kodu buraya eklenebilir
+                remove_service_if_exists(service_path);
             }
+            (false, true) => {
+                println!("Systemctl service will be created and enabled.");
+                create_service(service_path);
+                enable_service("hdm.service");
+            }
+            (true, true) => {
+                println!("Autologin and systemctl service both enabled.");
+                create_service(service_path);
+                enable_service("hdm.service");
+                // Oturum başlatma kodu buraya eklenebilir
+            }
+            (false, false) => {
+                println!("Neither autologin nor systemctl service enabled.");
+                remove_service_if_exists(service_path);
+            }
+        }
+    }
+}
+
+fn create_service(path: &str) {
+    let content = r#"[Unit]
+Description=HyprDM Display Manager
+After=graphical.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/hyprdm
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+"#;
+    if let Err(e) = std::fs::write(path, content) {
+        eprintln!("Failed to write systemd service: {}", e);
+    } else {
+        println!("Service file written at {}", path);
+    }
+}
+
+fn enable_service(name: &str) {
+    match Command::new("systemctl").arg("enable").arg(name).status() {
+        Ok(s) if s.success() => println!("{} enabled successfully", name),
+        Ok(_) => eprintln!("Failed to enable {}", name),
+        Err(e) => eprintln!("Error running systemctl enable {}: {}", name, e),
+    }
+}
+
+fn remove_service_if_exists(path: &str) {
+    if Path::new(path).exists() {
+        if let Err(e) = std::fs::remove_file(path) {
+            eprintln!("Failed to remove service file {}: {}", path, e);
         } else {
-            println!("Neither autologin nor systemctl service is enabled.");
+            println!("Service file {} removed", path);
         }
     }
 }

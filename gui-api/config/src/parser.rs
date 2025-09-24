@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use std::process::Command;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct HDMConfig {
@@ -25,7 +24,6 @@ impl HDMConfig {
             self.default_session = "Hyprland".to_string();
         }
 
-        // autologin and systemctl_usedefine cannot both be true
         if self.autologin && self.systemctl_usedefine {
             panic!("autologin and systemctl_usedefine cannot both be true!");
         }
@@ -34,7 +32,6 @@ impl HDMConfig {
     }
 }
 
-/// Load and validate the config
 pub fn load_config(path: &Path) -> Result<HDMConfig, String> {
     if !path.exists() {
         return Ok(HDMConfig {
@@ -51,7 +48,7 @@ pub fn load_config(path: &Path) -> Result<HDMConfig, String> {
 
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read config: {}", e))?;
-    
+
     let mut map = HashMap::new();
     for line in content.lines() {
         let line = line.trim();
@@ -77,7 +74,6 @@ pub fn load_config(path: &Path) -> Result<HDMConfig, String> {
     Ok(config.validate())
 }
 
-/// Save the config to disk
 pub fn save_config(path: &Path, config: &HDMConfig) -> Result<(), String> {
     let mut lines = vec![];
     lines.push(format!("theme={}", config.theme));
@@ -92,58 +88,17 @@ pub fn save_config(path: &Path, config: &HDMConfig) -> Result<(), String> {
         lines.push(format!("two_factor_secret={}", secret));
     }
 
-    // Add systemctl_usedefine as a commented or active line
     if config.systemctl_usedefine {
         lines.push("systemctl_usedefine=true".to_string());
     } else {
         lines.push("# systemctl_usedefine=true".to_string());
     }
 
-    let content = lines.join("\n");
-    fs::write(path, content).map_err(|e| format!("Failed to save config: {}", e))?;
-
-    // If systemctl flag is true, create and enable the service automatically
-    if config.systemctl_usedefine {
-        create_and_enable_service()?;
-    }
+    fs::write(path, lines.join("\n")).map_err(|e| format!("Failed to save config: {}", e))?;
 
     Ok(())
 }
 
-/// Create a systemd service under multi-user.target and enable it
-fn create_and_enable_service() -> Result<(), String> {
-    let service_path = "/etc/systemd/system/multi-user.target.wants/hdm.service";
-    let service_content = r#"[Unit]
-Description=HyprDM Display Manager
-After=graphical.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/hyprdm
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-"#;
-
-    fs::write(service_path, service_content)
-        .map_err(|e| format!("Failed to create systemd service: {}", e))?;
-
-    // Enable service via systemctl
-    let status = Command::new("systemctl")
-        .arg("enable")
-        .arg("hdm.service")
-        .status()
-        .map_err(|e| format!("Failed to enable service: {}", e))?;
-
-    if !status.success() {
-        return Err("systemctl enable failed".into());
-    }
-
-    Ok(())
-}
-
-/// Load config or create default if not exists
 pub fn load_or_create_config(path: &Path) -> Result<HDMConfig, String> {
     if path.exists() {
         load_config(path)

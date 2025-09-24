@@ -4,3 +4,4 @@ members = [
     "config",
     "wlrootbackends"
 ]
+resolver = "2"

@@ -8,7 +8,6 @@ license = "BSD-3-Clause"
 
 [lib]
 name = "hdm_api"
-crate-type = ["cdylib"]  # FFI shared library
 
 [dependencies]
 once_cell = "1.17.2"

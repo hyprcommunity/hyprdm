@@ -1,38 +1,60 @@
-#ifndef BACKEND_H
-#define BACKEND_H
+#pragma once
 
-#include <QObject>
-#include <QString>
-#include <QStringList>
+#include <string>
+#include <vector>
 
 extern "C" {
-    // Rust backend fonksiyonları
-    void rust_load_themes();
-    bool rust_set_theme(const char *name);
-    void rust_apply_layout();
-    QStringList rust_available_sessions();
-    bool rust_switch_session(const char *newSession);
-    void rust_send_ipc_command(const char *cmd);
-    QString rust_active_window();
+    typedef struct Compositor Compositor;
+    typedef struct HyprlandIPC HyprlandIPC;
+    typedef struct LayoutManager LayoutManager;
+    typedef struct Session Session;
+    typedef struct ThemeManager ThemeManager;
+    typedef struct UnidataGenerator UnidataGenerator;
+    typedef struct User User;
+
+    struct PanelRect {
+        unsigned int x;
+        unsigned int y;
+        unsigned int width;
+        unsigned int height;
+    };
+
+    // Compositor
+    Compositor* compositor_new();
+    int compositor_run_with_ipc(Compositor* c, HyprlandIPC* ipc);
+    void compositor_stop(Compositor* c);
+
+    // IPC
+    HyprlandIPC* ipc_new();
+    int ipc_send_command(HyprlandIPC* ipc, const char* cmd);
+    char* ipc_get_status(HyprlandIPC* ipc);
+    void ipc_string_free(char* s);
+
+    // LayoutManager
+    LayoutManager* layout_manager_new();
+    void layout_manager_add_panel(LayoutManager* lm, const char* name, int layout);
+    void layout_manager_apply(LayoutManager* lm);
+    int layout_manager_get_tiling_panels(LayoutManager* lm, PanelRect* out, size_t max);
+
+    // Session
+    Session* session_new(const char* name, const char* exec);
+    int session_start(Session* s);
+    int session_stop(Session* s);
+    int session_restart(Session* s);
+    int session_switch(Session* s, const char* new_name, const char* new_exec);
+
+    // ThemeManager
+    ThemeManager* theme_manager_new();
+    int theme_manager_set_theme(ThemeManager* tm, const char* name);
+    int theme_manager_load_and_apply(ThemeManager* tm);
+
+    // Unidata
+    UnidataGenerator* unidata_generator_new(const char* scrub_path);
+    void unidata_add_target_dir(UnidataGenerator* ud, int platform, const char* dir_path);
+    int unidata_write_scrub(UnidataGenerator* ud);
+
+    // UserManager
+    User* user_new(const char* username, const char* pam_service, int method, const char* secret);
+    int user_authenticate(User* u, const char* password);
+    int user_verify_2fa(User* u, const char* code);
 }
-
-// C++ / QML wrapper
-namespace backend {
-
-class API : public QObject {
-    Q_OBJECT
-public:
-    explicit API(QObject *parent = nullptr);
-
-    Q_INVOKABLE void loadThemes();
-    Q_INVOKABLE bool setTheme(const QString &name);
-    Q_INVOKABLE void applyLayout();
-    Q_INVOKABLE QStringList availableSessions();
-    Q_INVOKABLE bool switchSession(const QString &newSession);
-    Q_INVOKABLE void sendIPCCommand(const QString &cmd);
-    Q_INVOKABLE QString activeWindow();
-};
-
-} // namespace backend
-
-#endif // BACKEND_H
