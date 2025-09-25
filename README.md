@@ -11,9 +11,6 @@
 
 In short, we support many integrations and features that carry DM functionality, and we plan to offer more advanced security and integration support in the future.
 
-# Current Status
-We are currently in the **beta-testing phase**, so some code structures are being reviewed for direct compilation. Therefore, you need to be cautious about errors and risk warnings before compiling.
-
 # Installation
 
 If you want to compile directly with Cargo:

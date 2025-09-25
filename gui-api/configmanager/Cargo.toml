@@ -1,17 +1,16 @@
 [package]
-name = "hyprdmbackend"
+name = "configmanager"
 version = "0.1.0"
 edition = "2021"
 authors = ["Zaman Huseynli <admin@azccriminal.space>"]
-description = "WLRoots backend FFI library for Hyprdm"
+description = "Configuration manager for Hyprdm"
 license = "BSD-3-Clause"
 
-[lib]
-crate-type = ["cdylib", "staticlib"]
+[[bin]]
+name = "configmanager"
+path = "src/config_manager.rs"
+
 [dependencies]
-once_cell = "1.17.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-slog = "2.7"
-hdm_api = { path = "../hdm_api" }
 config = { path = "../config" }

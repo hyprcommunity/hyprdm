@@ -1,13 +1,71 @@
 use std::path::Path;
 use std::process::Command;
-use crate::parser::load_or_create_config;
+use std::fs;
+use std::env;
+use std::time::UNIX_EPOCH;
+use config::parser::load_or_create_config;
 
 pub struct ConfigManager;
 
 impl ConfigManager {
-    pub fn run() {
+    pub fn run(reload: bool) {
         let config_path = Path::new("/etc/hyprdm/hyprdm.conf");
 
+        if reload {
+            // Reload kontrolü: değişip değişmediğine bak
+            let last_modified = match fs::metadata(config_path)
+                .and_then(|meta| meta.modified())
+            {
+                Ok(time) => time,
+                Err(_) => {
+                    eprintln!("Configuration file does not exist.");
+                    return;
+                }
+            };
+
+            let last_check_file = "/var/lib/hyprdm/config_last_check";
+            let last_check = fs::read_to_string(last_check_file)
+                .unwrap_or_default()
+                .parse::<u64>()
+                .unwrap_or(0);
+
+            let last_modified_secs = last_modified
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            if last_modified_secs <= last_check {
+                eprintln!("Configuration not changed, nothing to reload.");
+                return;
+            }
+
+            // Config değişmişse önce doğruluğunu kontrol et
+            match load_or_create_config(config_path) {
+                Ok(_) => {
+                    // Config doğru, timestamp'i kaydet ve restart
+                    if let Err(e) = fs::write(last_check_file, last_modified_secs.to_string()) {
+                        eprintln!("Failed to update last check timestamp: {}", e);
+                    }
+                    println!("Configuration changed and valid, reloading...");
+                    if let Err(e) = Command::new("sudo")
+                        .arg("systemctl")
+                        .arg("restart")
+                        .arg("hyprdm")
+                        .status()
+                    {
+                        eprintln!("Failed to restart hyprdm: {}", e);
+                    } else {
+                        println!("hyprdm restarted successfully.");
+                    }
+                }
+                Err(_) => {
+                    eprintln!("Config file corrupt. systemctl restart skipped.");
+                    return;
+                }
+            }
+        }
+
+        // Ana config yönetim işlemleri
         let config = match load_or_create_config(config_path) {
             Ok(cfg) => cfg,
             Err(e) => {
@@ -35,7 +93,6 @@ impl ConfigManager {
         match (config.autologin, config.systemctl_usedefine) {
             (true, false) => {
                 println!("Autologin enabled, systemctl service disabled.");
-                // Oturum başlatma kodu buraya eklenebilir
                 remove_service_if_exists(service_path);
             }
             (false, true) => {
@@ -47,7 +104,6 @@ impl ConfigManager {
                 println!("Autologin and systemctl service both enabled.");
                 create_service(service_path);
                 enable_service("hdm.service");
-                // Oturum başlatma kodu buraya eklenebilir
             }
             (false, false) => {
                 println!("Neither autologin nor systemctl service enabled.");
@@ -70,7 +126,7 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 "#;
-    if let Err(e) = std::fs::write(path, content) {
+    if let Err(e) = fs::write(path, content) {
         eprintln!("Failed to write systemd service: {}", e);
     } else {
         println!("Service file written at {}", path);
@@ -87,10 +143,16 @@ fn enable_service(name: &str) {
 
 fn remove_service_if_exists(path: &str) {
     if Path::new(path).exists() {
-        if let Err(e) = std::fs::remove_file(path) {
+        if let Err(e) = fs::remove_file(path) {
             eprintln!("Failed to remove service file {}: {}", path, e);
         } else {
             println!("Service file {} removed", path);
         }
     }
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let reload = args.iter().any(|a| a == "--reload");
+    ConfigManager::run(reload);
 }
