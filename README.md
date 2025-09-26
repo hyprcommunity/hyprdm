@@ -21,11 +21,11 @@ cargo build --release
 ```
 If you want to compile the Rust backend FFI library:
 ```
-HDM_API_LIB_TYPE=c cargo build
+HDM_API_LIB_TYPE=c cargo build --release
 ```
 If you want to compile the Rust backend library directly:
 ```
-HDM_API_LIB_TYPE=rust cargo build
+HDM_API_LIB_TYPE=rust cargo build --release
 ```
 If you want to install the GUI interface based on QuickShell:
 
