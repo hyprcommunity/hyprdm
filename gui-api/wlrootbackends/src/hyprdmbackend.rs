@@ -75,30 +75,23 @@ pub extern "C" fn ipc_string_free(s: *mut c_char) {
     }
 }
 
+
 // -------------------- LayoutManager FFI --------------------
-#[no_mangle]
-pub extern "C" fn layout_manager_new() -> *mut LayoutManager {
-    Box::into_raw(Box::new(LayoutManager { panels: vec![], global_layout: Layout::Tiling }))
-}
 
 #[no_mangle]
-pub extern "C" fn layout_manager_add_panel(lm: *mut LayoutManager, name: *const c_char, layout: c_int) {
-    if lm.is_null() { return; }
-    let lm_ref = unsafe { &mut *lm };
-    let name_str = unsafe { CStr::from_ptr(name).to_string_lossy().to_string() };
-    let layout_enum = match layout {
-        0 => Layout::Tiling,
-        1 => Layout::Floating,
-        _ => Layout::Tiling,
+pub extern "C" fn layout_manager_new(panel_name: *const c_char) -> *mut LayoutManager {
+    if panel_name.is_null() {
+        return std::ptr::null_mut();
+    }
+    let name_str = unsafe { CStr::from_ptr(panel_name).to_string_lossy().to_string() };
+    let lm = LayoutManager {
+        panel: Panel {
+            name: name_str,
+            layout: Layout::Tiling,
+        },
+        global_layout: Layout::Tiling,
     };
-    lm_ref.panels.push(Panel { name: name_str, layout: layout_enum });
-}
-
-#[no_mangle]
-pub extern "C" fn layout_manager_apply(lm: *mut LayoutManager) {
-    if lm.is_null() { return; }
-    let lm_ref = unsafe { &mut *lm };
-    lm_ref.apply();
+    Box::into_raw(Box::new(lm))
 }
 
 #[repr(C)]
@@ -110,24 +103,57 @@ pub struct PanelRect {
 }
 
 #[no_mangle]
-pub extern "C" fn layout_manager_get_tiling_panels(lm: *mut LayoutManager, out: *mut PanelRect, max: usize) -> c_int {
-    if lm.is_null() || out.is_null() { return -1; }
-    let lm_ref = unsafe { &mut *lm };
-    let tiling: Vec<_> = lm_ref.panels.iter().filter(|p| matches!(p.layout, Layout::Tiling)).collect();
-    let count = tiling.len().min(max);
-    let screen_width = 1920;
-    let screen_height = 1080;
-
-    for (i, _panel) in tiling.iter().take(count).enumerate() {
-        let width = screen_width / count as u32;
-        let x = i as u32 * width;
-        let y = 0;
-        let rect = PanelRect { x, y, width, height: screen_height };
-        unsafe { *out.add(i) = rect; }
+pub extern "C" fn layout_manager_apply(
+    lm: *mut LayoutManager,
+    width: u32,
+    height: u32,
+    x: u32,
+    y: u32,
+) {
+    if lm.is_null() {
+        return;
     }
-    count as c_int
+    let lm_ref = unsafe { &mut *lm };
+    lm_ref.apply(width, height, x, y);
 }
 
+#[no_mangle]
+pub extern "C" fn layout_manager_get_panel_rect(
+    lm: *mut LayoutManager,
+    out: *mut PanelRect,
+    screen_width: u32,
+    screen_height: u32,
+) -> c_int {
+    if lm.is_null() || out.is_null() {
+        return -1;
+    }
+    let lm_ref = unsafe { &mut *lm };
+
+    let rect = match lm_ref.panel.layout {
+        Layout::Tiling => PanelRect {
+            x: 0,
+            y: 0,
+            width: screen_width,
+            height: screen_height,
+        },
+        Layout::Floating => PanelRect {
+            x: screen_width / 4,
+            y: screen_height / 4,
+            width: screen_width / 2,
+            height: screen_height / 2,
+        },
+    };
+
+    unsafe { *out = rect; }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn layout_manager_free(lm: *mut LayoutManager) {
+    if !lm.is_null() {
+       unsafe { let _ = Box::from_raw(lm); }
+    }
+}
 // -------------------- Session FFI --------------------
 #[no_mangle]
 pub extern "C" fn session_new(name: *const c_char, exec: *const c_char) -> *mut Session {

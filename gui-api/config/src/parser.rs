@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -29,6 +29,28 @@ impl HDMConfig {
         }
 
         self
+    }
+
+    /// Kullanıcı tarafından seçilen arayüzün main.qml yolunu bulur
+    pub fn find_quickshell_ui(&self) -> Option<PathBuf> {
+        let interface_name = &self.default_session;
+
+        let dirs = vec![
+            dirs::config_dir().map(|d| d.join("hyprdm/quickshell")), // ~/.config/hyprdm/quickshell
+            dirs::data_local_dir().map(|d| d.join("quickshell")),     // ~/.local/share/quickshell
+            Some(PathBuf::from("/usr/share/hyprdm/quickshell")),      // /usr/share/hyprdm/quickshell
+        ];
+
+        for dir_opt in dirs {
+            if let Some(dir) = dir_opt {
+                let path = dir.join(interface_name).join("main.qml");
+                if path.exists() && path.is_file() {
+                    return Some(path);
+                }
+            }
+        }
+
+        None
     }
 }
 

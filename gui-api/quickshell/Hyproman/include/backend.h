@@ -19,6 +19,11 @@ extern "C" {
         unsigned int height;
     };
 
+    enum Layout {
+        TILING = 0,
+        FLOATING = 1
+    };
+
     // Compositor
     Compositor* compositor_new();
     int compositor_run_with_ipc(Compositor* c, HyprlandIPC* ipc);
@@ -31,10 +36,11 @@ extern "C" {
     void ipc_string_free(char* s);
 
     // LayoutManager
-    LayoutManager* layout_manager_new();
+    LayoutManager* layout_manager_new(const char* panel_name);
     void layout_manager_add_panel(LayoutManager* lm, const char* name, int layout);
-    void layout_manager_apply(LayoutManager* lm);
-    int layout_manager_get_tiling_panels(LayoutManager* lm, PanelRect* out, size_t max);
+    void layout_manager_apply(LayoutManager* lm, unsigned int width, unsigned int height, unsigned int x, unsigned int y);
+    int layout_manager_get_panel_rect(LayoutManager* lm, struct PanelRect* out);
+    void layout_manager_free(LayoutManager* lm);
 
     // Session
     Session* session_new(const char* name, const char* exec);

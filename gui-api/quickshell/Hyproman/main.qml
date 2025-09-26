@@ -9,7 +9,6 @@ ApplicationWindow {
     height: 600
     title: qsTr("Display Manager")
 
-    // Arka plan
     Rectangle {
         anchors.fill: parent
         color: "#2e3440"
@@ -45,6 +44,15 @@ ApplicationWindow {
             font.pointSize: 16
         }
 
+        // İki faktör kodu (sadece aktifse göster)
+        TextField {
+            id: twoFactorField
+            placeholderText: "2FA Code"
+            Layout.preferredWidth: 300
+            font.pointSize: 16
+            visible: UserBackend !== 0 && UserBackend.twofactor_method !== 2 // 2 = None
+        }
+
         // Oturum seçimi
         ComboBox {
             id: sessionCombo
@@ -60,10 +68,18 @@ ApplicationWindow {
             Button {
                 text: "Login"
                 onClicked: {
-                    // Backend fonksiyon çağrısı
-                    if (CompositorBackend !== 0 && IPCBackend !== 0) {
-                        console.log("Starting session for user:", usernameField.text)
-                        session_start(LayoutManagerBackend) // örnek FFI çağrısı
+                    if (CompositorBackend !== 0 && IPCBackend !== 0 && LayoutManagerBackend !== 0 && SessionBackend !== 0 && UserBackend !== 0) {
+                        // 2FA aktifse kontrol et
+                        if (UserBackend.twofactor_method !== 2) {
+                            if (UserBackend.verify_2fa(twoFactorField.text)) {
+                                console.log("2FA verified")
+                                session_start(SessionBackend)
+                            } else {
+                                console.log("Invalid 2FA code")
+                            }
+                        } else {
+                            session_start(SessionBackend)
+                        }
                     }
                 }
             }
@@ -71,8 +87,8 @@ ApplicationWindow {
             Button {
                 text: "Restart"
                 onClicked: {
-                    if (LayoutManagerBackend !== 0) {
-                        session_restart(LayoutManagerBackend) // örnek FFI çağrısı
+                    if (SessionBackend !== 0) {
+                        session_restart(SessionBackend)
                     }
                 }
             }
@@ -87,28 +103,16 @@ ApplicationWindow {
             }
         }
 
-        // Tema değiştirme
-        RowLayout {
-            spacing: 10
-            Layout.alignment: Qt.AlignHCenter
+        // Tema değiştirme (GTK, Qt, HyprSensitivity)
+        ComboBox {
+            id: themeCombo
+            Layout.preferredWidth: 300
+            model: ["GTK3", "GTK4", "Qt5", "Qt6", "HyprSensitivity"]
 
-            Button {
-                text: "Light Theme"
-                onClicked: {
-                    if (ThemeManagerBackend !== 0) {
-                        theme_manager_set_theme(ThemeManagerBackend, "light")
-                        theme_manager_load_and_apply(ThemeManagerBackend)
-                    }
-                }
-            }
-
-            Button {
-                text: "Dark Theme"
-                onClicked: {
-                    if (ThemeManagerBackend !== 0) {
-                        theme_manager_set_theme(ThemeManagerBackend, "dark")
-                        theme_manager_load_and_apply(ThemeManagerBackend)
-                    }
+            onCurrentTextChanged: {
+                if (ThemeManagerBackend !== 0) {
+                    theme_manager_set_theme(ThemeManagerBackend, currentText)
+                    theme_manager_load_and_apply(ThemeManagerBackend)
                 }
             }
         }

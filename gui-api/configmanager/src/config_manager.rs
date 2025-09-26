@@ -88,6 +88,12 @@ impl ConfigManager {
         }
         println!("Systemctl usedefine: {}", config.systemctl_usedefine);
 
+        if let Some(ui_path) = config.find_quickshell_ui() {
+            println!("Selected QuickShell UI main.qml: {:?}", ui_path);
+        } else {
+            eprintln!("Could not find main.qml for session '{}'", config.default_session);
+        }
+
         let service_path = "/etc/systemd/system/hdm.service";
 
         match (config.autologin, config.systemctl_usedefine) {
