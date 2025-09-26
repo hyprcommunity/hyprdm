@@ -19,6 +19,14 @@ If you want to compile directly with Cargo:
 cd gui-api
 cargo build --release
 ```
+If you want to compile the Rust backend library:
+```
+HDM_API_LIB_TYPE=c cargo build
+```
+If you want to compile the Rust library directly:
+```
+HDM_API_LIB_TYPE=rust cargo build
+```
 If you want to install the GUI interface based on QuickShell:
 
 ```bash
