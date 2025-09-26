@@ -19,7 +19,7 @@ If you want to compile directly with Cargo:
 cd gui-api
 cargo build --release
 ```
-If you want to compile the Rust backend FFI library:
+If you want to compile the Rust FFI backend library:
 ```
 HDM_API_LIB_TYPE=c cargo build
 ```
