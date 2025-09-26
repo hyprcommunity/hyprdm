@@ -2,7 +2,7 @@
 **hyprdm**, or **Hyprland Display Manager**, is a dynamic display manager developed for **Hyprland Tiling Window Management**, providing customization and integration for Hyprland.
 
 ## Features
-- HotP and ToTP support for user login, PAM, and 2FA.
+- HOTP and TOTP support for user login, PAM, and 2FA.
 - Customization based on Qt QuickShell patches or configurations.
 - Thanks to the backend system, we now have **Rust** and **C++** support for developing graphical interfaces.
 - **Theme Manager support:** Full support for GTK and Qt themes, including custom theme support.
