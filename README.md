@@ -1,6 +1,7 @@
 # Introduction
 **hyprdm**, or **Hyprland Display Manager**, is a dynamic display manager developed for **Hyprland Tiling Window Management**, providing customization and integration for Hyprland.
-![HyprlandDM](HyprlandDM.png)
+<img src="HyprlandDM.png" alt="HyprlandDM" width="400" height="300"/>
+
 
 ## Features
 - HOTP and TOTP support for user login, PAM, and 2FA.
