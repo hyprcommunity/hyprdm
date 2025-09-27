@@ -68,14 +68,6 @@ pub extern "C" fn ipc_get_status(ipc: *mut HyprlandIPC) -> *mut c_char {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn ipc_string_free(s: *mut c_char) {
-    if !s.is_null() {
-        unsafe { let _ = CString::from_raw(s); }
-    }
-}
-
-
 // -------------------- LayoutManager FFI --------------------
 
 #[no_mangle]
@@ -110,9 +102,7 @@ pub extern "C" fn layout_manager_apply(
     x: u32,
     y: u32,
 ) {
-    if lm.is_null() {
-        return;
-    }
+    if lm.is_null() { return; }
     let lm_ref = unsafe { &mut *lm };
     lm_ref.apply(width, height, x, y);
 }
@@ -124,36 +114,32 @@ pub extern "C" fn layout_manager_get_panel_rect(
     screen_width: u32,
     screen_height: u32,
 ) -> c_int {
-    if lm.is_null() || out.is_null() {
-        return -1;
-    }
+    if lm.is_null() || out.is_null() { return -1; }
     let lm_ref = unsafe { &mut *lm };
-
     let rect = match lm_ref.panel.layout {
-        Layout::Tiling => PanelRect {
-            x: 0,
-            y: 0,
-            width: screen_width,
-            height: screen_height,
-        },
-        Layout::Floating => PanelRect {
-            x: screen_width / 4,
-            y: screen_height / 4,
-            width: screen_width / 2,
-            height: screen_height / 2,
-        },
+        Layout::Tiling => PanelRect { x:0, y:0, width:screen_width, height:screen_height },
+        Layout::Floating => PanelRect { x:screen_width/4, y:screen_height/4, width:screen_width/2, height:screen_height/2 },
     };
-
     unsafe { *out = rect; }
     0
 }
 
+// -------------------- Panel Name Getter --------------------
 #[no_mangle]
-pub extern "C" fn layout_manager_free(lm: *mut LayoutManager) {
-    if !lm.is_null() {
-       unsafe { let _ = Box::from_raw(lm); }
+pub extern "C" fn layout_manager_get_panel_name(lm: *const LayoutManager) -> *const c_char {
+    if lm.is_null() { return ptr::null(); }
+    let lm_ref = unsafe { &*lm };
+    match CString::new(lm_ref.panel.name.clone()) {
+        Ok(cstr) => cstr.into_raw(),
+        Err(_) => ptr::null(),
     }
 }
+#[no_mangle]
+pub extern "C" fn string_free(s: *mut c_char) {
+    if s.is_null() { return; }
+    unsafe { let _ = CString::from_raw(s); } 
+}
+
 // -------------------- Session FFI --------------------
 #[no_mangle]
 pub extern "C" fn session_new(name: *const c_char, exec: *const c_char) -> *mut Session {
@@ -282,4 +268,53 @@ pub extern "C" fn user_verify_2fa(u: *mut User, code: *const c_char) -> c_int {
     let code_str = unsafe { CStr::from_ptr(code).to_string_lossy().to_string() };
     let config_path = Path::new("/etc/hyprdm/hyprdm.conf"); // örnek, ihtiyaca göre değiştir
     u_ref.verify_2fa(&code_str, config_path).into()
+}
+// -------------------- Free / Drop functions --------------------
+#[no_mangle]
+pub extern "C" fn compositor_free(c: *mut Compositor) {
+    if !c.is_null() {
+        unsafe { let _ = Box::from_raw(c); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ipc_free(ipc: *mut HyprlandIPC) {
+    if !ipc.is_null() {
+        unsafe { let _ = Box::from_raw(ipc); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn layout_manager_free(lm: *mut LayoutManager) {
+    if !lm.is_null() {
+        unsafe { let _ = Box::from_raw(lm); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn session_free(s: *mut Session) {
+    if !s.is_null() {
+        unsafe { let _ = Box::from_raw(s); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn theme_manager_free(tm: *mut ThemeManager) {
+    if !tm.is_null() {
+        unsafe { let _ = Box::from_raw(tm); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn user_free(u: *mut User) {
+    if !u.is_null() {
+        unsafe { let _ = Box::from_raw(u); }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn unidata_free(ud: *mut UnidataGenerator) {
+    if !ud.is_null() {
+        unsafe { let _ = Box::from_raw(ud); }
+    }
 }
