@@ -25,16 +25,20 @@ cargo build --release
 ```
 If you want to compile the Rust backend FFI library:
 ```
-HDM_API_LIB_TYPE=c cargo build --release
+HDM_API_LIB_TYPE=c cargo build --release --no-default-features
 ```
 If you want to compile the Rust backend library directly:
 ```
 HDM_API_LIB_TYPE=rust cargo build --release
 ```
-If you want to install the GUI interface based on QuickShell:
+or if you want to install directly:
+```
+./build.sh
+```
+If you want to install the HyprDM-greeterd:
 
 ```bash
-cd gui-api/quickshell
+cd gui-api/greeterd
 bash autogen.sh
 ````
 

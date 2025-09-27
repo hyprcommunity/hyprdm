@@ -15,3 +15,8 @@ serde_json = "1.0"
 slog = "2.7"
 hdm_api = { path = "../hdm_api" }
 config = { path = "../config" }
+
+
+[features]
+default = []
+c_ffi = []       
