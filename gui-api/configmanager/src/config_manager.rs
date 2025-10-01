@@ -157,8 +157,28 @@ fn remove_service_if_exists(path: &str) {
     }
 }
 
+fn print_help() {
+    println!(
+        r#"ConfigManager - HyprDM Configuration Manager
+
+Usage:
+    config_manager [OPTIONS]
+
+Options:
+    --reload        Reload configuration if it has changed and restart HyprDM.
+    --help          Show this help message.
+"#
+    );
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    if args.iter().any(|a| a == "--help") {
+        print_help();
+        return;
+    }
+
     let reload = args.iter().any(|a| a == "--reload");
     ConfigManager::run(reload);
 }
