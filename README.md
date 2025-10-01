@@ -57,8 +57,10 @@ cmake ../
 ```
 
 The GUI interfaces are developed by HyprCommunity. Narval interfaces are distributed under the BSD3 "Claude" license. The interface includes various features, but it's currently under development and will be available soon.
+
+
 Hyproman interface:
-<img src="/interfaces-examples/Hyproman.png" alt="HyprlandDM" width="400" height="400"/>
+<img src="/interfaces-examples/Hyproman.png" alt="HyprlandDM" width="1200" height="1200"/>
 
 
 
