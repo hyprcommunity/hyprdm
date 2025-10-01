@@ -56,7 +56,7 @@ cd build
 cmake ../
 ```
 
-The GUI interfaces are developed by HyprCommunity. Narval interfaces are distributed under the BSD3 "Claude" license. The interface includes various features, but it's currently under development and will be available soon.
+The GUI interfaces are developed by HyprCommunity. Hyproman and Narval interfaces are distributed under the BSD3 "Claude" license. Narval interface includes various features, but it's currently under development and will be available soon.
 
 
 Hyproman interface:
