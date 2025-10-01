@@ -55,6 +55,9 @@ mkdir build
 cd build
 cmake ../
 ```
+
+
+
 Hyproman interface:
 <img src="/interfaces-examples/Hyproman.png" alt="HyprlandDM" width="400" height="400"/>
 
