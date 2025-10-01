@@ -1,5 +1,5 @@
 [package]
-name = "configmanager"
+name = "hyprdmconfigmanager"
 version = "0.1.0"
 edition = "2021"
 authors = ["Zaman Huseynli <admin@azccriminal.space>"]
