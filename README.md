@@ -39,7 +39,6 @@ If you want to install the HyprDM-greeterd:
 
 ```bash
 cd gui-api/greeterd
-bash autogen.sh
 ````
 
 If you're building with Makefile:
