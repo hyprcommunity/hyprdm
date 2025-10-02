@@ -7,15 +7,12 @@ fn main() {
     let mut new_toml = String::new();
     for line in cargo_toml.lines() {
         if line.trim_start().starts_with("crate-type") {
-            continue; // tamamen kaldır
+            continue; // crate-type satırlarını tamamen kaldır
         }
         new_toml.push_str(line);
         new_toml.push('\n');
     }
 
-    // sadece cdylib
-    new_toml.push_str("crate-type = [\"cdylib\"]\n");
-
     fs::write(cargo_manifest, new_toml).unwrap();
-    println!("cargo:warning=Configured hdm_api for C/FFI build");
+    println!("cargo:warning=Configured hdm_api for C/FFI build (no crate-type, default rlib)");
 }
