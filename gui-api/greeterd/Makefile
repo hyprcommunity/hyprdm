@@ -1,7 +1,3 @@
-# ==========================
-# HyprDM Greeter Makefile
-# ==========================
-
 # C++ compiler
 CXX := g++
 
@@ -10,8 +6,7 @@ QT5_INCLUDE_DIR := /usr/include/qt
 QT5_LIB_DIR := /usr/lib/qt
 
 # Rust library dizini ve statik linkleme
-RUST_PROJECT_DIR := ../
-RUST_LIB_DIR := $(RUST_PROJECT_DIR)/target/release
+RUST_LIB_DIR ?= ../target/release
 
 # C++ flags
 CXXFLAGS := -std=c++17 -Wall \
@@ -22,10 +17,10 @@ CXXFLAGS := -std=c++17 -Wall \
         -I$(QT5_INCLUDE_DIR)/QtQuick \
         -I$(QT5_INCLUDE_DIR)/QtQuickControls2
 
-# Link flags
+
 LDFLAGS := -L$(QT5_LIB_DIR) \
            -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
-           -L$(RUST_LIB_DIR) -lhyprdmbackend \
+           $(RUST_LIB_DIR)/libhyprdmbackend.a \
            -lpthread -ldl -lm -lrt -lsystemd
 
 # Qt moc tool
@@ -40,48 +35,26 @@ OBJ := $(SRC:.cpp=.o) $(MOC_SRC:.cpp=.o)
 # Target executable
 TARGET := hyprdmgreeterd
 
-# Environment
-export HDM_API_LIB_TYPE ?= rust
-
-# ==========================
 # Default build
-# ==========================
-all: rust_libs $(TARGET)
+all: $(TARGET)
 
-# --------------------------
-# Rust kütüphanesini derle
-# --------------------------
-rust_libs:
-	@echo ">>> Building Rust libraries..."
-	cd $(RUST_PROJECT_DIR) && cargo build --release --workspace --features c_ffi
-
-# --------------------------
 # Link target
-# --------------------------
 $(TARGET): $(OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-# --------------------------
 # Compile C++ sources
-# --------------------------
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# --------------------------
 # Generate moc files from headers
-# --------------------------
 %.moc.cpp: %.h
 	$(MOC) $< -o $@
 
-# --------------------------
 # Install executable
-# --------------------------
-install: all
+install: $(TARGET)
 	sudo cp $(TARGET) /usr/bin/
 	sudo chmod +x /usr/bin/$(TARGET)
 
-# --------------------------
 # Clean build artifacts
-# --------------------------
 clean:
 	rm -f $(OBJ) $(MOC_SRC) $(TARGET)
