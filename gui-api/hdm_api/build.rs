@@ -11,7 +11,7 @@ fn main() {
 
     println!("cargo:warning=Using build script: {}", script);
 
-    // Derleme sırasında uygun build script’i çalıştır
+    // Derleme sırasında seçili helper build script’i çalıştır
     let status = Command::new("rustc")
         .args(&[script, "--crate-type", "bin", "-o", "hdm_build_helper"])
         .status()
