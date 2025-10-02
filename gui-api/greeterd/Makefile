@@ -5,7 +5,7 @@ CXX := g++
 QT5_INCLUDE_DIR := /usr/include/qt
 QT5_LIB_DIR := /usr/lib/qt
 
-# Rust shared library dizini
+# Rust library dizini
 RUST_LIB_DIR ?= ../target/release
 
 # C++ flags
@@ -17,12 +17,11 @@ CXXFLAGS := -std=c++17 -Wall \
         -I$(QT5_INCLUDE_DIR)/QtQuick \
         -I$(QT5_INCLUDE_DIR)/QtQuickControls2
 
-# Link flags
+# Linker flags (Rust .so dosyasının tam yolu verildi)
 LDFLAGS := -L$(QT5_LIB_DIR) \
            -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
-           -l:libhyprdmbackend.so \
-           -lpthread -ldl -lm -lrt -lsystemd \
-           -Wl,-rpath,$(RUST_LIB_DIR)
+           $(RUST_LIB_DIR)/libhyprdmbackend.so \
+           -lpthread -ldl -lm -lrt -lsystemd
 
 # Qt moc tool
 MOC := moc-qt5
