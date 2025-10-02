@@ -24,16 +24,39 @@ fn main() {
             continue;
         }
 
-        if in_lib_section {
-            if trimmed.starts_with("crate-type") {
-                has_crate_type = true;
-                if choice == "c" {
-                    // C modunda satırı tamamen kaldır
-                    continue;
+        if in_lib_section && trimmed.starts_with("crate-type") {
+            has_crate_type = true;
+
+            if choice == "c" {
+                // crate-type değerlerini ayıkla
+                let mut types: Vec<&str> = line
+                    .split('=')
+                    .nth(1)
+                    .unwrap_or("")
+                    .replace(['[', ']', '"'], "")
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty() && *s != "staticlib") // staticlib'i kaldır
+                    .collect();
+
+                if types.is_empty() {
+                    // boş kalmasın, default olarak cdylib bırak
+                    types.push("cdylib");
                 }
-            } else if trimmed.starts_with('[') {
-                in_lib_section = false;
+
+                let new_line = format!("crate-type = [{}]", types
+                    .iter()
+                    .map(|s| format!("\"{}\"", s))
+                    .collect::<Vec<_>>()
+                    .join(", "));
+
+                new_lines.push(new_line);
+                continue;
             }
+        }
+
+        if in_lib_section && trimmed.starts_with('[') {
+            in_lib_section = false;
         }
 
         new_lines.push(line.to_string());
@@ -54,23 +77,6 @@ fn main() {
     fs::write(cargo_toml_path, new_lines.join("\n"))
         .expect("Failed to write hdm_api/Cargo.toml");
 
-    // 2️⃣ wlrootbackends için feature kontrolü
-    let wlroot_toml_path = Path::new("wlrootbackends/Cargo.toml");
-    if wlroot_toml_path.exists() {
-        let wl_content = fs::read_to_string(wlroot_toml_path)
-            .expect("Failed to read wlrootbackends/Cargo.toml");
-
-        let wl_lines: Vec<_> = wl_content
-            .lines()
-            .filter(|line| !(choice == "c" && line.contains("hdm_api")))
-            .map(|line| line.to_string())
-            .collect();
-
-        fs::write(wlroot_toml_path, wl_lines.join("\n"))
-            .expect("Failed to write wlrootbackends/Cargo.toml");
-
-        if choice == "c" {
-            println!("cargo:warning=wlrootbackends will build without hdm_api for C/FFI mode");
-        }
-    }
+    // 2️⃣ wlrootbackends dokunulmaz
+    println!("cargo:warning=wlrootbackends will build with existing hdm_api configuration");
 }
