@@ -38,7 +38,7 @@ fn main() {
     }
 
     // Rust modunda crate-type yoksa ekle
-    if choice == "rust" && !has_crate_type {
+    if choice == "c" && !has_crate_type {
         let mut updated_lines = Vec::new();
         let mut added = false;
         for line in new_lines {
@@ -63,7 +63,7 @@ fn main() {
         for line in wl_content.lines() {
             if line.contains("hdm_api") {
                 // C/FFI modunda hdm_api bağımlılığını kaldır
-                if choice == "c" {
+                if choice == "rust" {
                     continue;
                 }
             }

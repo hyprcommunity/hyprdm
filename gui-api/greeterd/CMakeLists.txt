@@ -1,39 +1,61 @@
-cmake_minimum_required(VERSION 3.20)
-project(hyprdmgreeterd LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.16)
+project(hyprdmgreeterd CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Qt6 paketleri
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts)
+# Qt5 path (Arch Linux default)
+set(Qt5Core_DIR /usr/lib/cmake/Qt5Core)
+set(Qt5Gui_DIR /usr/lib/cmake/Qt5Gui)
+set(Qt5Qml_DIR /usr/lib/cmake/Qt5Qml)
+set(Qt5Quick_DIR /usr/lib/cmake/Qt5Quick)
+set(Qt5QuickControls2_DIR /usr/lib/cmake/Qt5QuickControls2)
 
-# Rust kütüphane dizini (autogen.sh tarafından ayarlanmış)
-if(NOT DEFINED ENV{HYPRDM_LIB_DIR})
-    message(FATAL_ERROR "HYPRDM_LIB_DIR environment variable not set. Run autogen.sh first.")
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Gui REQUIRED)
+find_package(Qt5Qml REQUIRED)
+find_package(Qt5Quick REQUIRED)
+find_package(Qt5QuickControls2 REQUIRED)
+
+# Rust backend library dizini
+# Eğer ortam değişkeni varsa onu kullan, yoksa default ../target/release
+if(DEFINED ENV{HYPRDM_LIB_DIR})
+    set(RUST_LIB_DIR $ENV{HYPRDM_LIB_DIR})
+else()
+    set(RUST_LIB_DIR "${CMAKE_SOURCE_DIR}/../target/release")
 endif()
-set(RUST_LIB_DIR $ENV{HYPRDM_LIB_DIR})
 
-# kaynak dosyalar
-file(GLOB SRC_FILES "*.cpp" "backend/*.cpp")
-file(GLOB MOC_HDRS "backend/*.h")
+# Include directories
+include_directories(
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Qml_INCLUDE_DIRS}
+    ${Qt5Quick_INCLUDE_DIRS}
+    ${Qt5QuickControls2_INCLUDE_DIRS}
+)
 
-# otomatik MOC
-qt6_wrap_cpp(MOC_SRC ${MOC_HDRS})
+# Source files
+file(GLOB SRC_FILES
+    "*.cpp"
+    "backend/*.cpp"
+)
 
+file(GLOB MOC_HEADERS
+    "backend/*.h"
+)
+
+# MOC generation
+qt5_wrap_cpp(MOC_SRC ${MOC_HEADERS})
+
+# Executable
 add_executable(${PROJECT_NAME} ${SRC_FILES} ${MOC_SRC})
 
-# include dizinleri
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} "${RUST_LIB_DIR}")
-
-# Qt linkleme
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::QuickLayouts)
-
-# Rust kütüphanesini linkleme (.so kullanmak için)
-target_link_libraries(${PROJECT_NAME} PRIVATE "${RUST_LIB_DIR}/libhyprdmbackend.so")
-
-# Install hedefi
-install(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION /usr/bin)
-
-# Opsiyonel: Rust .so dosyasını da /usr/lib altına kopyala
-install(FILES "${RUST_LIB_DIR}/libhyprdmbackend.so" DESTINATION /usr/lib)
+# Link libraries
+target_link_libraries(${PROJECT_NAME}
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Qml
+    Qt5::Quick
+    Qt5::QuickControls2
+    ${RUST_LIB_DIR}/libhyprdmbackend.a
+)

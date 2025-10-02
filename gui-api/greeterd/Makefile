@@ -1,37 +1,58 @@
+# C++ compiler
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall $(shell pkg-config --cflags Qt6Core Qt6Gui Qt6Qml Qt6Quick Qt6QuickControls2 Qt6QuickLayouts)
-LDFLAGS := $(shell pkg-config --libs Qt6Core Qt6Gui Qt6Qml Qt6Quick Qt6QuickControls2 Qt6QuickLayouts)
 
-# Rust kütüphane dizini, autogen.sh ile set edilmiş
-RUST_LIB_DIR ?= $(HYPRDM_LIB_DIR)
+# Qt5 include ve library dizinleri
+QT5_INCLUDE_DIR := /usr/include/qt
+QT5_LIB_DIR := /usr/lib/qt
 
-# kaynak dosyalar
+# Rust library dizini (kullanıcı veya ortam değişkeni ile set edilecek)
+# Eğer HYPRDM_LIB_DIR export edilmişse onu kullan, yoksa default olarak ../target/release
+RUST_LIB_DIR ?= ../target/release
+
+# C++ flags
+CXXFLAGS := -std=c++17 -Wall \
+	-I$(QT5_INCLUDE_DIR) \
+	-I$(QT5_INCLUDE_DIR)/QtCore \
+	-I$(QT5_INCLUDE_DIR)/QtGui \
+	-I$(QT5_INCLUDE_DIR)/QtQml \
+	-I$(QT5_INCLUDE_DIR)/QtQuick \
+	-I$(QT5_INCLUDE_DIR)/QtQuickControls2
+
+# Linker flags
+LDFLAGS := -L$(QT5_LIB_DIR) -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 -L$(RUST_LIB_DIR) -lhyprdmbackend
+
+# Qt moc tool
+MOC := moc-qt5
+
+# Source files
 SRC := $(wildcard *.cpp) $(wildcard backend/*.cpp)
 MOC_HDRS := $(wildcard backend/*.h)
 MOC_SRC := $(MOC_HDRS:.h=.moc.cpp)
-
-# objeler
 OBJ := $(SRC:.cpp=.o) $(MOC_SRC:.cpp=.o)
+
+# Target executable
 TARGET := hyprdmgreeterd
 
+# Default build
 all: $(TARGET)
 
-# main target
+# Link target
 $(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -L$(RUST_LIB_DIR) -lhyprdmbackend
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-# normal cpp compilation
+# Compile C++ sources
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# generate moc files from headers
+# Generate moc files from headers
 %.moc.cpp: %.h
-	moc $< -o $@
+	$(MOC) $< -o $@
 
+# Install executable
 install: $(TARGET)
 	sudo cp $(TARGET) /usr/bin/
 	sudo chmod +x /usr/bin/$(TARGET)
 
-# temizleme
+# Clean build artifacts
 clean:
 	rm -f $(OBJ) $(MOC_SRC) $(TARGET)
