@@ -5,11 +5,3 @@ members = [
     "configmanager"
 ]
 resolver = "2"
-
-
-[workspace.dependencies]
-wlrootbackends = { path = "wlrootbackends", optional = true }
-
-[features]
-rust_build = []
-c_ffi = ["wlrootbackends"]
