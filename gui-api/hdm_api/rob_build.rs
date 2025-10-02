@@ -1,27 +1,46 @@
 use std::fs;
+use std::path::Path;
 
 fn main() {
-    let cargo_manifest = "Cargo.toml";
-    let cargo_toml = fs::read_to_string(cargo_manifest).unwrap();
+    println!("cargo:warning=Building hdm_api in Rust mode (staticlib)");
 
-    let mut lines: Vec<String> = cargo_toml
-        .lines()
-        .filter(|line| !line.trim_start().starts_with("crate-type"))
-        .map(|l| l.to_string())
-        .collect();
+    let cargo_toml_path = Path::new("Cargo.toml");
+    let content = fs::read_to_string(cargo_toml_path).expect("Failed to read Cargo.toml");
 
-    let mut new_toml = String::new();
-    let mut added = false;
+    let mut new_lines = Vec::new();
+    let mut in_lib_section = false;
+    let mut has_crate_type = false;
 
-    for line in &lines {
-        new_toml.push_str(line);
-        new_toml.push('\n');
-        if line.trim() == "[lib]" && !added {
-            new_toml.push_str("crate-type = [\"staticlib\"]\n");
-            added = true;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[lib]" {
+            in_lib_section = true;
+            new_lines.push(line.to_string());
+            continue;
         }
+
+        if in_lib_section {
+            if trimmed.starts_with("crate-type") {
+                has_crate_type = true;
+            } else if trimmed.starts_with('[') {
+                in_lib_section = false;
+            }
+        }
+
+        new_lines.push(line.to_string());
     }
 
-    fs::write(cargo_manifest, new_toml).unwrap();
-    println!("cargo:warning=Configured hdm_api for Rust build (crate-type = [\"staticlib\"])");
+    // Rust modunda crate-type yoksa ekle
+    if !has_crate_type {
+        let mut updated_lines = Vec::new();
+        for line in new_lines {
+            updated_lines.push(line.clone());
+            if line.trim() == "[lib]" {
+                updated_lines.push("crate-type = [\"staticlib\"]".to_string());
+            }
+        }
+        new_lines = updated_lines;
+    }
+
+    fs::write(cargo_toml_path, new_lines.join("\n")).expect("Failed to write Cargo.toml");
 }
