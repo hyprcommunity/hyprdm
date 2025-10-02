@@ -17,10 +17,11 @@ CXXFLAGS := -std=c++17 -Wall \
         -I$(QT5_INCLUDE_DIR)/QtQuick \
         -I$(QT5_INCLUDE_DIR)/QtQuickControls2
 
-# Linker flags
-# .so yerine statik .a kullanıyoruz
-LDFLAGS := -L$(QT5_LIB_DIR) -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
-           $(RUST_LIB_DIR)/libhyprdmbackend.a -lpthread -ldl -lm -lrt
+
+LDFLAGS := -L$(QT5_LIB_DIR) \
+           -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
+           $(RUST_LIB_DIR)/libhyprdmbackend.a \
+           -lpthread -ldl -lm -lrt -lsystemd
 
 # Qt moc tool
 MOC := moc-qt5
