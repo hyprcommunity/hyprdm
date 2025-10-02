@@ -5,19 +5,22 @@ CXX := g++
 QT5_INCLUDE_DIR := /usr/include/qt
 QT5_LIB_DIR := /usr/lib/qt
 
+# Rust library dizini ve statik linkleme
 RUST_LIB_DIR ?= ../target/release
 
 # C++ flags
 CXXFLAGS := -std=c++17 -Wall \
-	-I$(QT5_INCLUDE_DIR) \
-	-I$(QT5_INCLUDE_DIR)/QtCore \
-	-I$(QT5_INCLUDE_DIR)/QtGui \
-	-I$(QT5_INCLUDE_DIR)/QtQml \
-	-I$(QT5_INCLUDE_DIR)/QtQuick \
-	-I$(QT5_INCLUDE_DIR)/QtQuickControls2
+        -I$(QT5_INCLUDE_DIR) \
+        -I$(QT5_INCLUDE_DIR)/QtCore \
+        -I$(QT5_INCLUDE_DIR)/QtGui \
+        -I$(QT5_INCLUDE_DIR)/QtQml \
+        -I$(QT5_INCLUDE_DIR)/QtQuick \
+        -I$(QT5_INCLUDE_DIR)/QtQuickControls2
 
 # Linker flags
-LDFLAGS := -L$(QT5_LIB_DIR) -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 -L$(RUST_LIB_DIR) -lhyprdmbackend
+# .so yerine statik .a kullanıyoruz
+LDFLAGS := -L$(QT5_LIB_DIR) -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
+           $(RUST_LIB_DIR)/libhyprdmbackend.a -lpthread -ldl -lm -lrt
 
 # Qt moc tool
 MOC := moc-qt5
