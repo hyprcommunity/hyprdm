@@ -5,9 +5,7 @@ CXX := g++
 QT5_INCLUDE_DIR := /usr/include/qt
 QT5_LIB_DIR := /usr/lib/qt
 
-# Rust library dizini (kullanıcı veya ortam değişkeni ile set edilecek)
-# Eğer HYPRDM_LIB_DIR export edilmişse onu kullan, yoksa default olarak ../target/release
-RUST_LIB_DIR ?= ../target/x86_64-unknown-linux-gnu
+RUST_LIB_DIR ?= ../target/release
 
 # C++ flags
 CXXFLAGS := -std=c++17 -Wall \
