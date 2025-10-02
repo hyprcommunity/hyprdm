@@ -25,7 +25,7 @@ cargo build --release
 ```
 If you want to compile the Rust backend FFI library:
 ```
-HDM_API_LIB_TYPE=c cargo build --workspace --features c_ffi
+HDM_API_LIB_TYPE=c cargo build --release --workspace --features c_ffi
 ```
 If you want to compile the Rust backend library directly:
 ```
