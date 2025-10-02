@@ -1,7 +1,8 @@
+  GNU nano 8.6                                                                                                                                                                                                                                                                                                 PKGBUILD                                                                                                                                                                                                                                                                                                            
 # Maintainer: Zaman Huseynli <zamanhuseynli23@gmail.com>
 # Backup contact: admin@azccriminal.space
 pkgname=hyprdm-full-git
-pkgver=1.0.12.g76b85a
+pkgver=1.0.35.g44e70b5
 pkgrel=1
 pkgdesc="Hyprland Display Manager HyprDM full version"
 arch=('x86_64')
@@ -44,15 +45,11 @@ build() {
 
     echo ">>> FFI library building...."
     export HDM_API_LIB_TYPE=c
-    cargo build --release --no-default-features
+    cargo build --workspace --features c_ffi
 
     echo ">>> Greeter building... (hyprdmgreeterd)..."
-    cd ../greeterd
+    cd greeterd
     make
-
-    echo ">>> Config Manager Building...(hyprdmconfigmanager)..."
-    cd ../configmanager
-    cargo build --release
 }
 
 package() {
@@ -64,17 +61,17 @@ package() {
     fi
 
     # Greeter -> hyprdmgreeterd
-    if [ -f "../greeterd/hyprdmgreeterd" ]; then
-        install -Dm755 "../greeterd/hyprdmgreeterd" "$pkgdir/usr/bin/hyprdmgreeterd"
+    if [ -f "greeterd/hyprdmgreeterd" ]; then
+        install -Dm755 "greeterd/hyprdmgreeterd" "$pkgdir/usr/bin/hyprdmgreeterd"
     fi
 
     # Config Manager -> hyprdmconfigmanager
     if [ -f "../configmanager/target/release/hyprdmconfigmanager" ]; then
-        install -Dm755 "../configmanager/target/release/hyprdmconfigmanager" "$pkgdir/usr/bin/hyprdmconfigmanager"
+        install -Dm755 "configmanager/target/release/hyprdmconfigmanager" "$pkgdir/usr/bin/hyprdmconfigmanager"
     fi
 
     if [ -d "../quickshell" ]; then
         mkdir -p "$pkgdir$HOME/.config/quickshell"
-        cp -r ../greeterd/quickshell/* "$pkgdir$HOME/.config/quickshell/"
+        cp -r quickshell/* "$pkgdir$HOME/.config/quickshell/"
     fi
 }
