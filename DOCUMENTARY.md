@@ -1,1 +1,7 @@
-[Full Documentary]()
+[Full Documentary](https://wiki.azccriminal.space/wiki-hyprdm.html)
+[About](https://wiki.azccriminal.space/wiki-hyprdm.html#about)
+[Installation](https://wiki.azccriminal.space/wiki-hyprdm.html#Installation)
+[Usage](https://wiki.azccriminal.space/wiki-hyprdm.html#usage)
+[Interface Usage](https://wiki.azccriminal.space/wiki-hyprdm.html#interface)
+[Build Your Own Interface](https://wiki.azccriminal.space/wiki-hyprdm.html#build)
+[Commands](https://wiki.azccriminal.space/wiki-hyprdm.html#commands)
