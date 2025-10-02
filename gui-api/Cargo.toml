@@ -3,5 +3,6 @@ members = [
     "hdm_api",
     "config",
     "configmanager"
+    "wlrootbackends"
 ]
 resolver = "2"
