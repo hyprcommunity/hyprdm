@@ -29,26 +29,31 @@ fn main() {
 
             if choice == "c" {
                 // crate-type değerlerini ayıkla
-                let mut types: Vec<&str> = line
+                let raw = line
                     .split('=')
                     .nth(1)
                     .unwrap_or("")
-                    .replace(['[', ']', '"'], "")
+                    .replace(['[', ']', '"'], "");
+
+                let mut types: Vec<String> = raw
                     .split(',')
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty() && *s != "staticlib") // staticlib'i kaldır
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty() && s != "staticlib") // staticlib'i kaldır
                     .collect();
 
                 if types.is_empty() {
-                    // boş kalmasın, default olarak cdylib bırak
-                    types.push("cdylib");
+                    // boş kalmasın, default cdylib bırak
+                    types.push("cdylib".to_string());
                 }
 
-                let new_line = format!("crate-type = [{}]", types
-                    .iter()
-                    .map(|s| format!("\"{}\"", s))
-                    .collect::<Vec<_>>()
-                    .join(", "));
+                let new_line = format!(
+                    "crate-type = [{}]",
+                    types
+                        .iter()
+                        .map(|s| format!("\"{}\"", s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
 
                 new_lines.push(new_line);
                 continue;
@@ -77,6 +82,6 @@ fn main() {
     fs::write(cargo_toml_path, new_lines.join("\n"))
         .expect("Failed to write hdm_api/Cargo.toml");
 
-    // 2️⃣ wlrootbackends dokunulmaz
+    // 2️⃣ wlrootbackends'e dokunma
     println!("cargo:warning=wlrootbackends will build with existing hdm_api configuration");
 }
