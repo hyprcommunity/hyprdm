@@ -72,9 +72,7 @@ int main(int argc, char *argv[])
     // 4️⃣ QML dosyası aranacak dizinleri belirle
     std::vector<fs::path> searchDirs = {
         fs::path(getenv("HOME")) / ".config/hyprdm/quickshell",
-        fs::path(getenv("HOME")) / ".local/share/quickshell",
-        fs::path(getenv("HOME")) / "hyprdm/gui-api/quickshell",
-        "/usr/share/hyprdm/quickshell"
+        fs::path(getenv("HOME")) / ".local/share/quickshell"
     };
 
     // 5️⃣ QML dosyasını bul
