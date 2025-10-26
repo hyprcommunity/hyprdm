@@ -28,7 +28,7 @@ std::string getPanelNameFromConfig() {
             continue;
 
         const std::string key = "default_session=";
-        if (line.rfind(key, 0) == 0)
+        if (line.rfind(key, 0) == 0) {  // satır 'default_session=' ile başlıyorsa
             std::string val = line.substr(key.size());
             if (!val.empty()) {
                 while (!val.empty() && isspace(val.back()))
