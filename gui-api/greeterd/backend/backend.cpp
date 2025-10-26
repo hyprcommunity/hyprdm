@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     HyprlandIPC* ipc             = ipc_new();
     LayoutManager* layoutManager = layout_manager_new(panelName.c_str());
     ThemeManager* themeManager   = theme_manager_new();
-    Session* session             = session_new("DefaultSession", "/usr/lib/wayland-session");
+    Session* session             = session_new("DefaultSession", "/usr/share/wayland-session");
     User* userManager            = user_new("user", "login_service", 2 /*TwoFactorMethod::None*/, nullptr);
 
     // 3️⃣ Rust tarafı override ediyorsa panel adını güncelle
