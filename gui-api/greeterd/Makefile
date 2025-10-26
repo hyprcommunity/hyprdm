@@ -20,7 +20,8 @@ CXXFLAGS := -std=c++17 -Wall \
 LDFLAGS := -L$(QT5_LIB_DIR) \
            -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
            -Wl,--whole-archive $(RUST_LIB_DIR)/libhyprdmbackend.a -Wl,--no-whole-archive \
-           -lpthread -ldl -lm -lrt -lsystemd
+           -ludev -lgbm -lpam \
+           -lsystemd -lpthread -ldl -lm -lrt
 
 # Qt moc tool
 MOC := moc-qt5
