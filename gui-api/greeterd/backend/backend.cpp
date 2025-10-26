@@ -12,9 +12,6 @@
 
 namespace fs = std::filesystem;
 
-// --------------------------------------------------------------------
-//  /etc/hyprdm/hyprdm.conf dosyasından default_session değerini okur
-// --------------------------------------------------------------------
 std::string getPanelNameFromConfig() {
     const std::string configPath = "/etc/hyprdm/hyprdm.conf";
     std::ifstream file(configPath);
@@ -31,7 +28,7 @@ std::string getPanelNameFromConfig() {
             continue;
 
         const std::string key = "default_session=";
-        if (line.rfind(key, 0) == 0) { // satır 'default_session=' ile başlıyorsa
+        if (line.rfind(key, 0) == 0)
             std::string val = line.substr(key.size());
             if (!val.empty()) {
                 while (!val.empty() && isspace(val.back()))
@@ -51,7 +48,6 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // Backend nesnelerini yarat
     Compositor* compositor       = compositor_new();
     HyprlandIPC* ipc             = ipc_new();
     LayoutManager* layoutManager = layout_manager_new("DefaultPanel");
@@ -59,11 +55,11 @@ int main(int argc, char *argv[])
     Session* session             = session_new("DefaultSession", "/usr/lib/wayland-session");
     User* userManager            = user_new("user", "login_service", 2 /*TwoFactorMethod::None*/, nullptr);
 
-    // Panel adını config dosyasından al
+ 
     std::string panelName = getPanelNameFromConfig();
     qDebug() << "Panel name from config:" << QString::fromStdString(panelName);
 
-    // Rust'tan panel adı override ediyorsa al
+
     if (layoutManager) {
         const char* name = layout_manager_get_panel_name(layoutManager);
         if (name) {
@@ -100,7 +96,6 @@ int main(int argc, char *argv[])
     qDebug() << "Using QML file:"
              << QString::fromStdString(qmlFilePath.string());
 
-    // QML engine
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [&qmlFilePath](QObject *obj, const QUrl &objUrl) {
@@ -113,8 +108,7 @@ int main(int argc, char *argv[])
     engine.load(QUrl::fromLocalFile(QString::fromStdString(qmlFilePath.string())));
 
     int ret = app.exec();
-
-    // Uygulama kapanmadan önce backend nesnelerini serbest bırak
+    
     if (compositor)       compositor_stop(compositor);
     if (layoutManager)    layout_manager_free(layoutManager);
     if (session)          session_free(session);
