@@ -11,18 +11,13 @@ fn main() {
 
     println!("cargo:warning=Using build script: {}", script);
 
-    println!("cargo:rustc-link-lib=udev");
-    println!("cargo:rustc-link-lib=gbm");
-    println!("cargo:rustc-link-lib=pam");
-
-
+    // Derleme sırasında seçili helper build script’i çalıştır
     let status = Command::new("rustc")
         .args(&[script, "--crate-type", "bin", "-o", "hdm_build_helper"])
         .status()
         .expect("Failed to compile helper build script");
     assert!(status.success(), "Failed to compile {}", script);
 
-    // Yardımcı build script'i çalıştır
     let status = Command::new("./hdm_build_helper")
         .status()
         .expect("Failed to run helper build script");
