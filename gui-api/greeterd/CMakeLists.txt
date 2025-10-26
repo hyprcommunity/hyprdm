@@ -4,7 +4,7 @@ project(hyprdmgreeterd CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Qt5 path (Arch Linux default)
+# Qt5 paths (Arch Linux)
 set(Qt5Core_DIR /usr/lib/cmake/Qt5Core)
 set(Qt5Gui_DIR /usr/lib/cmake/Qt5Gui)
 set(Qt5Qml_DIR /usr/lib/cmake/Qt5Qml)
@@ -17,8 +17,7 @@ find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5QuickControls2 REQUIRED)
 
-# Rust backend library dizini
-# Eğer ortam değişkeni varsa onu kullan, yoksa default ../target/release
+# Rust backend library (staticlib)
 if(DEFINED ENV{HYPRDM_LIB_DIR})
     set(RUST_LIB_DIR $ENV{HYPRDM_LIB_DIR})
 else()
@@ -44,13 +43,11 @@ file(GLOB MOC_HEADERS
     "backend/*.h"
 )
 
-# MOC generation
 qt5_wrap_cpp(MOC_SRC ${MOC_HEADERS})
 
-# Executable
 add_executable(${PROJECT_NAME} ${SRC_FILES} ${MOC_SRC})
 
-# Link libraries
+# ---- Link Libraries ----
 target_link_libraries(${PROJECT_NAME}
     Qt5::Core
     Qt5::Gui
@@ -58,4 +55,20 @@ target_link_libraries(${PROJECT_NAME}
     Qt5::Quick
     Qt5::QuickControls2
     ${RUST_LIB_DIR}/libhyprdmbackend.a
+    input
+    udev
+    gbm
+    pam
+    systemd
+    dbus-1
+    xkbcommon
+    pthread
+    dl
+    m
+    rt
+)
+
+# ---- Optional: explicit linker flags for static archives ----
+target_link_options(${PROJECT_NAME} PRIVATE
+    "-Wl,--whole-archive" "${RUST_LIB_DIR}/libhyprdmbackend.a" "-Wl,--no-whole-archive"
 )
