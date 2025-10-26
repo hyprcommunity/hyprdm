@@ -41,9 +41,7 @@ std::string getPanelNameFromConfig() {
     return "DefaultPanel";
 }
 
-// --------------------------------------------------------------------
-//                              MAIN
-// --------------------------------------------------------------------
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -70,14 +68,13 @@ int main(int argc, char *argv[])
 
     qDebug() << "Final panel name:" << QString::fromStdString(panelName);
 
-    // Aranacak dizinler
+
     std::vector<fs::path> searchDirs = {
         fs::path(getenv("HOME")) / ".config/hyprdm/quickshell",
         fs::path(getenv("HOME")) / ".local/share/quickshell",
         fs::path(getenv("HOME")) / "hyprdm/gui-api/quickshell",
     };
 
-    // QML dosyasını bul
     fs::path qmlFilePath;
     for (auto& dir : searchDirs) {
         fs::path candidate = dir / panelName / "main.qml";
