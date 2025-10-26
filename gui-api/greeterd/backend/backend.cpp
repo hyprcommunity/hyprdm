@@ -46,6 +46,11 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    // 1️⃣ Config dosyasından panel adını al
+    std::string panelName = getPanelNameFromConfig();
+    qDebug() << "Panel name from config:" << QString::fromStdString(panelName);
+
+    // 2️⃣ Backend nesnelerini oluştur
     Compositor* compositor       = compositor_new();
     HyprlandIPC* ipc             = ipc_new();
     LayoutManager* layoutManager = layout_manager_new(panelName.c_str());
@@ -53,11 +58,7 @@ int main(int argc, char *argv[])
     Session* session             = session_new("DefaultSession", "/usr/lib/wayland-session");
     User* userManager            = user_new("user", "login_service", 2 /*TwoFactorMethod::None*/, nullptr);
 
- 
-    std::string panelName = getPanelNameFromConfig();
-    qDebug() << "Panel name from config:" << QString::fromStdString(panelName);
-
-
+    // 3️⃣ Rust tarafı override ediyorsa panel adını güncelle
     if (layoutManager) {
         const char* name = layout_manager_get_panel_name(layoutManager);
         if (name) {
@@ -68,13 +69,15 @@ int main(int argc, char *argv[])
 
     qDebug() << "Final panel name:" << QString::fromStdString(panelName);
 
-
+    // 4️⃣ QML dosyası aranacak dizinleri belirle
     std::vector<fs::path> searchDirs = {
         fs::path(getenv("HOME")) / ".config/hyprdm/quickshell",
         fs::path(getenv("HOME")) / ".local/share/quickshell",
         fs::path(getenv("HOME")) / "hyprdm/gui-api/quickshell",
+        "/usr/share/hyprdm/quickshell"
     };
 
+    // 5️⃣ QML dosyasını bul
     fs::path qmlFilePath;
     for (auto& dir : searchDirs) {
         fs::path candidate = dir / panelName / "main.qml";
@@ -93,6 +96,7 @@ int main(int argc, char *argv[])
     qDebug() << "Using QML file:"
              << QString::fromStdString(qmlFilePath.string());
 
+    // 6️⃣ QML motorunu yükle
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [&qmlFilePath](QObject *obj, const QUrl &objUrl) {
@@ -104,8 +108,10 @@ int main(int argc, char *argv[])
 
     engine.load(QUrl::fromLocalFile(QString::fromStdString(qmlFilePath.string())));
 
+    // 7️⃣ Qt event loop
     int ret = app.exec();
-    
+
+    // 8️⃣ Backend kaynaklarını temizle
     if (compositor)       compositor_stop(compositor);
     if (layoutManager)    layout_manager_free(layoutManager);
     if (session)          session_free(session);
