@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     Compositor* compositor       = compositor_new();
     HyprlandIPC* ipc             = ipc_new();
-    LayoutManager* layoutManager = layout_manager_new("DefaultPanel");
+    LayoutManager* layoutManager = layout_manager_new(panelName.c_str());
     ThemeManager* themeManager   = theme_manager_new();
     Session* session             = session_new("DefaultSession", "/usr/lib/wayland-session");
     User* userManager            = user_new("user", "login_service", 2 /*TwoFactorMethod::None*/, nullptr);
