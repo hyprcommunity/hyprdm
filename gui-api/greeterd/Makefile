@@ -1,60 +1,91 @@
-# C++ compiler
-CXX := g++
+# ===========================================
+# HyprDM Greeterd — Final Arch Qt5 Makefile
+# ===========================================
 
-# Qt5 include ve library dizinleri
-QT5_INCLUDE_DIR := /usr/include/qt
-QT5_LIB_DIR := /usr/lib/qt
+CXX       := g++
+MOC       := moc-qt5
+MODE ?= release
 
-# Rust library dizini
-RUST_LIB_DIR ?= ../target/release
+RUST_LIB_DIR ?= ../target/$(MODE)
+RUST_LIB := $(RUST_LIB_DIR)/libhyprdmbackend.a
 
-# C++ flags
-CXXFLAGS := -std=c++17 -Wall \
-        -I$(QT5_INCLUDE_DIR) \
-        -I$(QT5_INCLUDE_DIR)/QtCore \
-        -I$(QT5_INCLUDE_DIR)/QtGui \
-        -I$(QT5_INCLUDE_DIR)/QtQml \
-        -I$(QT5_INCLUDE_DIR)/QtQuick \
-        -I$(QT5_INCLUDE_DIR)/QtQuickControls2
+# Auto-detect Qt include root (Arch vs Debian)
+QT_BASE := $(shell [ -d /usr/include/qt5 ] && echo /usr/include/qt5 || echo /usr/include/qt)
 
-LDFLAGS := -L$(QT5_LIB_DIR) \
-           -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 \
-           -Wl,--whole-archive $(RUST_LIB_DIR)/libhyprdmbackend.a -Wl,--no-whole-archive \
-           -linput -ludev -lgbm -lpam -lsystemd -ldbus-1 -lxkbcommon \
-           -lpthread -ldl -lm -lrt
+QT_INCLUDE := \
+    -I$(QT_BASE) \
+    -I$(QT_BASE)/QtCore \
+    -I$(QT_BASE)/QtGui \
+    -I$(QT_BASE)/QtQml \
+    -I$(QT_BASE)/QtQuick \
+    -I$(QT_BASE)/QtQuickControls2 \
+    -I$(QT_BASE)/QtWidgets
 
-# Qt moc tool
-MOC := moc-qt5
+CXXFLAGS := -std=c++17 -Wall -Wextra -fPIC -O3 -pipe \
+    $(QT_INCLUDE) -Ibackend -Ibackend/adapters
 
-# Source files
-SRC := $(wildcard *.cpp) $(wildcard backend/*.cpp)
-MOC_HDRS := $(wildcard backend/*.h)
-MOC_SRC := $(MOC_HDRS:.h=.moc.cpp)
-OBJ := $(SRC:.cpp=.o) $(MOC_SRC:.cpp=.o)
+LDFLAGS := \
+    -L/usr/lib \
+    -lQt5Core -lQt5Gui -lQt5Qml -lQt5Quick -lQt5QuickControls2 -lQt5Widgets \
+    -Wl,--whole-archive $(RUST_LIB) -Wl,--no-whole-archive \
+    -linput -ludev -lgbm -lpam -lsystemd -ldbus-1 -lxkbcommon \
+    -lpthread -ldl -lm -lrt
 
-# Target executable
+SRC := $(wildcard backend/*.cpp *.cpp)
+HDR := $(wildcard backend/*.h backend/*.hpp)
+MOC_CPP := $(HDR:%.h=%.moc.cpp) $(HDR:%.hpp=%.moc.cpp)
+OBJ := $(SRC:.cpp=.o) $(MOC_CPP:.cpp=.o)
 TARGET := hyprdmgreeterd
 
-# Default build
 all: $(TARGET)
 
-# Link target
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+# Generate MOC files with proper include dirs
+%.moc.cpp: %.h
+	@echo "[MOC] $<"
+	@$(MOC) $(QT_INCLUDE) $< -o $@
+
+%.moc.cpp: %.hpp
+	@echo "[MOC] $<"
+	@$(MOC) $(QT_INCLUDE) $< -o $@
 
 # Compile C++ sources
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	@echo "[C++] $<"
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Generate moc files from headers
-%.moc.cpp: %.h
-	$(MOC) $< -o $@
+%.o: %.moc.cpp
+	@echo "[C++] (moc) $<"
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Install executable
+# Link final binary (include CXXFLAGS to ensure all -I paths)
+$(TARGET): $(OBJ)
+	@echo "[LD] $@"
+	@$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Build complete: $(TARGET)"
+
 install: $(TARGET)
-	sudo cp $(TARGET) /usr/bin/
-	sudo chmod +x /usr/bin/$(TARGET)
+	sudo install -Dm755 $(TARGET) /usr/bin/$(TARGET)
+	@echo "✅ Installed to /usr/bin/$(TARGET)"
 
-# Clean build artifacts
 clean:
-	rm -f $(OBJ) $(MOC_SRC) $(TARGET)
+	rm -f $(OBJ) $(MOC_CPP) $(TARGET)
+	@echo "🧹 Clean complete."
+
+# ========================
+# Extra helper targets
+# ========================
+
+build:
+	@$(MAKE) -j$$(nproc)
+
+debug:
+	@echo "🔍 Building in debug mode with debug-symlink enabled..."
+	@mkdir -p ../target/debug
+	@ln -sf ../target/debug ../target/debug-symlink
+	@$(MAKE) MODE=debug -j$$(nproc)
+
+rebuild:
+	@$(MAKE) clean
+	@$(MAKE) -j$$(nproc)
+
+.PHONY: all clean install build debug rebuild

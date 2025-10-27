@@ -19,6 +19,7 @@ pam-client = "0.1"
 config = { path = "../config" }
 slog = "2.7.0"
 winit = "0.30.12"
+libc = "0.2.177"
 
 [features]
 default = []      

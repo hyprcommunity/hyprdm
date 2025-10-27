@@ -6,442 +6,416 @@ import QtGraphicalEffects 1.15
 import "style" 1.0
 
 ApplicationWindow {
-    id: window
+    id: root
     visible: true
-    width: 960
-    height: 600
-    minimumWidth: 720
-    minimumHeight: 480
-    title: qsTr("HyprDM Display Manager")
-    font.family: Style.fontFamily
+    width: 1280
+    height: 800
+    title: qsTr("HyprDM — Hyproman")
+    color: "black"
 
-    property string currentTime: Qt.formatDateTime(new Date(), "HH:mm")
-    property string currentDate: Qt.formatDateTime(new Date(), "dddd, d MMMM")
-    property string statusMessage: ""
-    property color statusColor: "#A0FFCB"
-    property bool passwordVisible: false
+    property real uiScale: Math.min(width, height) / 900
+    property string currentUser: (typeof UserBackend !== "undefined" && UserBackend && UserBackend.username) ? UserBackend.username : ""
+    property bool twoFARequired: false
+    property string lastError: ""
 
-    function updateDateTime() {
-        const now = new Date()
-        currentTime = Qt.formatDateTime(now, "HH:mm")
-        currentDate = Qt.formatDateTime(now, "dddd, d MMMM")
+function updateTwoFA() {
+    twoFARequired = false
+
+    if (typeof UserBackend === "undefined" || !UserBackend) {
+        console.log("[2FA] UserBackend not available")
+        return
     }
 
-    function backendAvailable(value) {
-        return value !== null && value !== undefined && value !== 0
-    }
-
-    function showStatus(message, isError) {
-        statusMessage = message
-        statusColor = isError ? "#FF8A80" : "#A5D6A7"
-        statusResetTimer.restart()
-    }
-
-    function attemptLogin() {
-        if (!backendAvailable(CompositorBackend) ||
-            !backendAvailable(IPCBackend) ||
-            !backendAvailable(LayoutManagerBackend) ||
-            !backendAvailable(SessionBackend) ||
-            !backendAvailable(UserBackend)) {
-            showStatus(qsTr("Some services are not ready yet."), true)
+    try {
+        // 1️⃣ Eğer açıkça 2FA metodu varsa:
+        if (UserBackend.hasOwnProperty("twofactor_method")) {
+            console.log("[2FA] Detected method =", UserBackend.twofactor_method)
+            // method 0 veya 2 -> kapalı
+            twoFARequired = (UserBackend.twofactor_method !== 0 && UserBackend.twofactor_method !== 2)
             return
         }
 
-        if (backendAvailable(UserBackend) && UserBackend.twofactor_method !== 2) {
-            if (!UserBackend.verify_2fa(twoFactorField.text)) {
-                showStatus(qsTr("Invalid two-factor code."), true)
-                return
-            }
-        }
-
-        showStatus(qsTr("Starting session…"), false)
-        session_start(SessionBackend)
-    }
-
-    function restartSession() {
-        if (!backendAvailable(SessionBackend)) {
-            showStatus(qsTr("Session backend unavailable."), true)
+        // 2️⃣ Eğer boolean flag varsa:
+        if (UserBackend.hasOwnProperty("twofactor_enabled")) {
+            twoFARequired = !!UserBackend.twofactor_enabled
+            console.log("[2FA] Enabled flag =", twoFARequired)
             return
         }
-        session_restart(SessionBackend)
-        showStatus(qsTr("Session restarted."), false)
-    }
 
-    function stopCompositor() {
-        if (!backendAvailable(CompositorBackend)) {
-            showStatus(qsTr("Compositor backend unavailable."), true)
+        // 3️⃣ Eğer fonksiyon varsa:
+        let uname = usernameField.text && usernameField.text.length > 0 ? usernameField.text : currentUser
+        if (typeof UserBackend.hasTwoFactor === "function") {
+            twoFARequired = !!UserBackend.hasTwoFactor(uname)
+            console.log("[2FA] hasTwoFactor() →", twoFARequired)
             return
         }
-        compositor_stop(CompositorBackend)
-        showStatus(qsTr("Display server stopped."), false)
+
+        if (typeof UserBackend.isTwoFactorEnabled === "function") {
+            twoFARequired = !!UserBackend.isTwoFactorEnabled(uname)
+            console.log("[2FA] isTwoFactorEnabled() →", twoFARequired)
+            return
+        }
+
+        // 4️⃣ Hiçbiri yoksa → kapalı
+        twoFARequired = false
+        console.log("[2FA] No flag found, assuming disabled")
+
+    } catch (e) {
+        console.log("[2FA] Exception:", e)
+        twoFARequired = false
+    }
+}
+
+    function verifyPasswordWithBackend(pass) {
+        if (!UserBackend) return false
+        try {
+            if (typeof UserBackend.authenticate === "function")
+                return !!UserBackend.authenticate(pass)
+        } catch (e) {
+            console.log("authenticate() failed:", e)
+        }
+        return false
     }
 
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: updateDateTime()
+    function verifyTwoFAWithBackend(code) {
+        if (!twoFARequired) return true
+        if (!UserBackend) return false
+        try {
+            if (typeof UserBackend.verifyTwoFactor === "function")
+                return !!UserBackend.verifyTwoFactor(code)
+        } catch (e) {
+            console.log("verifyTwoFactor() failed:", e)
+        }
+        return false
     }
 
-    Timer {
-        id: statusResetTimer
-        interval: 6000
-        repeat: false
-        onTriggered: statusMessage = ""
+    function doLogin() {
+        lastError = ""
+        var p = passwordField.text
+        if (!p || p.length === 0) { lastError = "Password missing"; return }
+
+        var passOk = verifyPasswordWithBackend(p)
+        if (!passOk) { lastError = "Invalid password"; return }
+
+        if (twoFARequired) {
+            var code = twoFactorField.text
+            if (!code || code.length === 0) { lastError = "2FA code required"; return }
+            var twoOk = verifyTwoFAWithBackend(code)
+            if (!twoOk) { lastError = "Invalid 2FA code"; return }
+        }
+
+        console.log("✅ Login success for", currentUser)
     }
 
+    Component.onCompleted: {
+        if (currentUser && currentUser.length > 0)
+            usernameField.text = currentUser
+        updateTwoFA()
+    }
+
+    // --- Arka plan ---
     Image {
+        id: bg
         anchors.fill: parent
         source: Style.backgroundImage
         fillMode: Image.PreserveAspectCrop
         smooth: true
         z: -2
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#BF0F172A" }
-            GradientStop { position: 1.0; color: "#C6000B1A" }
+        SequentialAnimation on scale {
+            loops: Animation.Infinite
+            NumberAnimation { from: 1.0; to: 1.05; duration: 9000; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 1.05; to: 1.0; duration: 9000; easing.type: Easing.InOutQuad }
         }
-        z: -1
+        Rectangle {
+            anchors.fill: parent
+            z: 1
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#66000000" }
+                GradientStop { position: 1.0; color: "#AA000000" }
+            }
+        }
     }
 
-    RowLayout {
+    // --- Restart ikonu ---
+    Image {
+        id: eyeButton
         anchors.top: parent.top
-        anchors.topMargin: 24
-        anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 24
+        anchors.right: parent.right
+        anchors.margins: 24 * uiScale
+        width: 36 * uiScale
+        height: 36 * uiScale
+        fillMode: Image.PreserveAspectFit
+        opacity: 0.9
+        source: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij48cGF0aCBkPSJNNCwzMmM2LTEwLDE4LTE4LDI4LTE4czIyLDgsMjgsMThjLTYsMTAtMTgsMTgtMjgsMThTMTEsNDIsNCwzMnoiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMyIvPjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjgiIGZpbGw9IndoaXRlIi8+PC9zdmc+"
+        scale: eyeArea.containsMouse ? 1.15 : 1.0
+        Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
+        MouseArea {
+            id: eyeArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: restartPopup.open()
+        }
+        ToolTip.visible: eyeArea.containsMouse
+        ToolTip.text: "Restart Session"
+    }
 
-        Column {
-            spacing: 4
-            Text {
-                text: currentTime
-                font.pixelSize: 48
-                font.family: Style.fontFamily
-                font.bold: true
-                color: "#FFFFFF"
+    Popup {
+        id: restartPopup
+        modal: true
+        focus: true
+        width: 180 * uiScale
+        height: 88 * uiScale
+        x: eyeButton.x + eyeButton.width - width
+        y: eyeButton.y + eyeButton.height + (10 * uiScale)
+        opacity: 0.0
+        onOpened: NumberAnimation { target: restartPopup; property: "opacity"; from: 0; to: 1; duration: 200 }
+        background: Rectangle {
+            radius: Style.borderRadius
+            color: "#1A000000"
+            border.color: Style.borderColor
+            border.width: 1.5
+        }
+        Button {
+            anchors.centerIn: parent
+            text: "Restart"
+            font.pointSize: 14 * uiScale
+            background: Rectangle {
+                radius: Style.borderRadius
+                color: Style.primaryColor
+                opacity: hovered ? 1.0 : 0.9
+                Behavior on opacity { NumberAnimation { duration: 120 } }
             }
-            Text {
-                text: currentDate
-                font.pixelSize: 16
-                font.family: Style.fontFamily
-                color: "#E0E0E0"
-                opacity: 0.85
+            onClicked: {
+                if (typeof SessionBackend !== "undefined" && SessionBackend !== null)
+                    session_restart(SessionBackend)
+                restartPopup.close()
             }
         }
     }
 
+    // --- Orta panel ---
     Rectangle {
-        id: loginCard
-        width: Math.min(parent.width * 0.6, 520)
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.horizontalCenter: parent.horizontalCenter
-        radius: Style.borderRadius * 1.5
-        color: "#1A0F172A"
-        border.color: "#40FFFFFF"
-        border.width: 1
+        id: centerPanel
+        width: Math.min(560 * uiScale, root.width * 0.5)
+        radius: 24 * uiScale
+        color: "#1A000000"
+        border.color: "#55FFFFFF"
+        border.width: 1.2
+        anchors.centerIn: parent
+        height: formCol.implicitHeight + 56 * uiScale
         layer.enabled: true
-        layer.effect: FastBlur { radius: 24 }
+        layer.effect: DropShadow {
+            horizontalOffset: 0
+            verticalOffset: 10
+            radius: 25
+            samples: 25
+            color: "#44000000"
+        }
 
         ColumnLayout {
+            id: formCol
             anchors.fill: parent
-            anchors.margins: 28
-            spacing: 16
+            anchors.margins: 28 * uiScale
+            spacing: 16 * uiScale
 
-            ColumnLayout {
-                spacing: 4
+            // Başlık
+            Rectangle {
                 Layout.fillWidth: true
-
+                height: 60 * uiScale
+                radius: 18 * uiScale
+                color: "#33000000"
+                border.color: "#77FFFFFF"
+                border.width: 1.0
                 Text {
-                    text: qsTr("Welcome to HyprDM")
-                    font.pointSize: 24
-                    font.family: Style.fontFamily
+                    anchors.centerIn: parent
+                    text: "Welcome to Hyproman"
                     color: "#FFFFFF"
-                }
-                Text {
-                    text: qsTr("Log into your Wayland session with a refreshed, glassy interface.")
-                    font.pointSize: 12
-                    font.family: Style.fontFamily
-                    color: "#E0E0E0"
-                    wrapMode: Text.WordWrap
-                    opacity: 0.9
-                }
-            }
-
-            TextField {
-                id: usernameField
-                Layout.fillWidth: true
-                placeholderText: qsTr("Username")
-                font.pointSize: 14
-                font.family: Style.fontFamily
-                color: Style.textColor
-                placeholderTextColor: "#B3FFFFFF"
-                leftPadding: 16
-                rightPadding: 16
-                background: Rectangle {
-                    radius: Style.borderRadius
-                    color: "#26000000"
-                    border.color: control.activeFocus ? Style.primaryColor : "#26FFFFFF"
-                    border.width: 1
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                TextField {
-                    id: passwordField
-                    Layout.fillWidth: true
-                    placeholderText: qsTr("Password")
-                    echoMode: passwordVisible ? TextInput.Normal : TextInput.Password
-                    font.pointSize: 14
-                    font.family: Style.fontFamily
-                    color: Style.textColor
-                    placeholderTextColor: "#B3FFFFFF"
-                    leftPadding: 16
-                    rightPadding: 16
-                    Keys.onReturnPressed: attemptLogin()
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: "#26000000"
-                        border.color: control.activeFocus ? Style.primaryColor : "#26FFFFFF"
-                        border.width: 1
-                    }
-                }
-
-                Button {
-                    id: togglePassword
-                    Layout.preferredWidth: 56
-                    text: passwordVisible ? qsTr("Hide") : qsTr("Show")
-                    font.family: Style.fontFamily
-                    font.pointSize: 12
-                    onClicked: passwordVisible = !passwordVisible
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: control.hovered ? Style.hoverColor : Style.primaryColor
-                        border.color: "#33FFFFFF"
-                        implicitHeight: 40
-                        Behavior on color { ColorAnimation { duration: Style.animationDuration } }
-                    }
-                    contentItem: Text {
-                        text: control.text
-                        color: "#FFFFFF"
-                        font.family: Style.fontFamily
-                        font.pointSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-            }
-
-            TextField {
-                id: twoFactorField
-                Layout.fillWidth: true
-                placeholderText: qsTr("2FA Code")
-                visible: backendAvailable(UserBackend) && UserBackend.twofactor_method !== 2
-                font.pointSize: 14
-                font.family: Style.fontFamily
-                color: Style.textColor
-                placeholderTextColor: "#B3FFFFFF"
-                leftPadding: 16
-                rightPadding: 16
-                Keys.onReturnPressed: attemptLogin()
-                background: Rectangle {
-                    radius: Style.borderRadius
-                    color: "#26000000"
-                    border.color: control.activeFocus ? Style.primaryColor : "#26FFFFFF"
-                    border.width: 1
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                ComboBox {
-                    id: sessionCombo
-                    Layout.fillWidth: true
-                    model: [qsTr("Default"), qsTr("Tiling"), qsTr("Floating")]
-                    font.family: Style.fontFamily
-                    font.pointSize: 14
-                    onActivated: showStatus(qsTr("Session set to %1").arg(currentText), false)
-                    contentItem: Text {
-                        text: control.displayText
-                        font.family: Style.fontFamily
-                        font.pointSize: 14
-                        color: "#FFFFFF"
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignLeft
-                        elide: Text.ElideRight
-                        leftPadding: 16
-                    }
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: "#26000000"
-                        border.color: control.activeFocus ? Style.primaryColor : "#26FFFFFF"
-                        border.width: 1
-                    }
-                    delegate: ItemDelegate {
-                        width: control.width
-                        font.family: Style.fontFamily
-                        contentItem: Text {
-                            text: modelData
-                            font.family: Style.fontFamily
-                            font.pointSize: 14
-                            color: "#FFFFFF"
-                            leftPadding: 16
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            color: control.highlightedIndex === index ? "#3300AAFF" : "#1F000000"
-                        }
-                    }
-                }
-
-                ComboBox {
-                    id: themeCombo
-                    Layout.fillWidth: true
-                    model: ["GTK3", "GTK4", "Qt5", "Qt6", "HyprSensitivity"]
-                    font.family: Style.fontFamily
-                    font.pointSize: 14
-                    onActivated: {
-                        if (backendAvailable(ThemeManagerBackend)) {
-                            theme_manager_set_theme(ThemeManagerBackend, currentText)
-                            theme_manager_load_and_apply(ThemeManagerBackend)
-                            showStatus(qsTr("Theme %1 applied.").arg(currentText), false)
-                        } else {
-                            showStatus(qsTr("Theme manager unavailable."), true)
-                        }
-                    }
-                    contentItem: Text {
-                        text: control.displayText
-                        font.family: Style.fontFamily
-                        font.pointSize: 14
-                        color: "#FFFFFF"
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignLeft
-                        elide: Text.ElideRight
-                        leftPadding: 16
-                    }
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: "#26000000"
-                        border.color: control.activeFocus ? Style.primaryColor : "#26FFFFFF"
-                        border.width: 1
-                    }
-                    delegate: ItemDelegate {
-                        width: control.width
-                        font.family: Style.fontFamily
-                        contentItem: Text {
-                            text: modelData
-                            font.family: Style.fontFamily
-                            font.pointSize: 14
-                            color: "#FFFFFF"
-                            leftPadding: 16
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            color: control.highlightedIndex === index ? "#3300AAFF" : "#1F000000"
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                Button {
-                    id: loginButton
-                    Layout.fillWidth: true
-                    text: qsTr("Login")
-                    font.family: Style.fontFamily
-                    font.pointSize: 14
-                    onClicked: attemptLogin()
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: control.hovered ? Style.hoverColor : Style.primaryColor
-                        border.color: "#40FFFFFF"
-                        implicitHeight: 44
-                        Behavior on color { ColorAnimation { duration: Style.animationDuration } }
-                    }
-                    contentItem: Text {
-                        text: control.text
-                        color: "#FFFFFF"
-                        font.family: Style.fontFamily
-                        font.pointSize: 14
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-
-                Button {
-                    id: restartButton
-                    Layout.preferredWidth: 120
-                    text: qsTr("Restart")
-                    font.family: Style.fontFamily
-                    font.pointSize: 14
-                    onClicked: restartSession()
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: control.hovered ? "#FFB300" : "#FFA000"
-                        border.color: "#40FFFFFF"
-                        implicitHeight: 44
-                        Behavior on color { ColorAnimation { duration: Style.animationDuration } }
-                    }
-                    contentItem: Text {
-                        text: control.text
-                        color: "#202020"
-                        font.family: Style.fontFamily
-                        font.pointSize: 14
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.bold: true
-                    }
-                }
-
-                Button {
-                    id: stopButton
-                    Layout.preferredWidth: 120
-                    text: qsTr("Stop")
-                    font.family: Style.fontFamily
-                    font.pointSize: 14
-                    onClicked: stopCompositor()
-                    background: Rectangle {
-                        radius: Style.borderRadius
-                        color: control.hovered ? "#EF5350" : "#E53935"
-                        border.color: "#40FFFFFF"
-                        implicitHeight: 44
-                        Behavior on color { ColorAnimation { duration: Style.animationDuration } }
-                    }
-                    contentItem: Text {
-                        text: control.text
-                        color: "#FFFFFF"
-                        font.family: Style.fontFamily
-                        font.pointSize: 14
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: statusMessage !== "" ? 24 : 0
-
-                Text {
-                    anchors.fill: parent
-                    text: statusMessage
-                    visible: statusMessage !== ""
-                    font.pointSize: 12
-                    font.family: Style.fontFamily
-                    color: statusColor
-                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: 22 * uiScale
+                    font.bold: true
                     verticalAlignment: Text.AlignVCenter
-                    wrapMode: Text.WordWrap
                 }
+
+            // Username
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6 * uiScale
+                Text { text: "Username"; color: "#CCCCCC"; font.pixelSize: 12 * uiScale }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 46 * uiScale
+                    radius: 12 * uiScale
+                    color: "#202020"
+                    border.color: "#777"
+                    border.width: 1.0
+                    TextField {
+                        id: usernameField
+                        anchors.fill: parent
+                        anchors.margins: 12 * uiScale
+                        font.pixelSize: 14 * uiScale
+                        color: "#FFFFFF"
+                        verticalAlignment: Text.AlignVCenter
+                        readOnly: currentUser && currentUser.length > 0
+                        background: Rectangle { color: "transparent" }
+                        onTextChanged: updateTwoFA()
+                    }
+                }
+            }
+
+            // Password
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6 * uiScale
+                Text { text: "Password"; color: "#CCCCCC"; font.pixelSize: 12 * uiScale }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10 * uiScale
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 46 * uiScale
+                        radius: 12 * uiScale
+                        color: "#202020"
+                        border.color: "#777"
+                        border.width: 1.0
+                        TextField {
+                            id: passwordField
+                            anchors.fill: parent
+                            anchors.margins: 12 * uiScale
+                            font.pixelSize: 14 * uiScale
+                            color: "#FFFFFF"
+                            verticalAlignment: Text.AlignVCenter
+                            echoMode: TextInput.Password
+                            background: Rectangle { color: "transparent" }
+                            Keys.onReturnPressed: loginButton.clicked()
+                        }
+                    }
+                    Button {
+                        id: showBtn
+                        text: passwordField.echoMode === TextInput.Password ? "Show" : "Hide"
+                        width: 72 * uiScale
+                        height: 46 * uiScale
+                        font.pixelSize: 12 * uiScale
+                        background: Rectangle { color: "transparent" }
+                        onClicked: passwordField.echoMode =
+                            passwordField.echoMode === TextInput.Password ? TextInput.Normal : TextInput.Password
+                    }
+                }
+            }
+
+            // 2FA
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6 * uiScale
+                visible: twoFARequired
+                Text { text: "Two-Factor Code"; color: "#CCCCCC"; font.pixelSize: 12 * uiScale }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 46 * uiScale
+                    radius: 12 * uiScale
+                    color: "#202020"
+                    border.color: "#777"
+                    border.width: 1.0
+                    TextField {
+                        id: twoFactorField
+                        anchors.fill: parent
+                        anchors.margins: 12 * uiScale
+                        font.pixelSize: 14 * uiScale
+                        color: "#FFFFFF"
+                        verticalAlignment: Text.AlignVCenter
+                        background: Rectangle { color: "transparent" }
+                    }
+                }
+            }
+
+            // Session
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6 * uiScale
+                Text { text: "Session"; color: "#CCCCCC"; font.pixelSize: 12 * uiScale }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 46 * uiScale
+                    radius: 12 * uiScale
+                    color: "#1F00AAFF"
+                    border.color: "#66FFFFFF"
+                    border.width: 1.0
+                    ComboBox {
+                        id: sessionCombo
+                        anchors.fill: parent
+                        anchors.margins: 6 * uiScale
+                        model: ["Default", "Tiling", "Floating"]
+                        font.pixelSize: 14 * uiScale
+                        background: Rectangle { color: "transparent" }
+                        contentItem: Text {
+                            text: sessionCombo.currentText
+                            color: "#FFFFFF"
+                            verticalAlignment: Text.AlignVCenter
+                            horizontalAlignment: Text.AlignLeft
+                            anchors.leftMargin: 10 * uiScale
+                        }
+                    }
+                }
+            }
+
+            // Login
+            Button {
+                id: loginButton
+                Layout.fillWidth: true
+                height: 50 * uiScale
+                text: "Login"
+                font.pixelSize: 16 * uiScale
+                font.bold: true
+                background: Rectangle {
+                    radius: 16 * uiScale
+                    color: Style.primaryColor
+                    opacity: loginButton.hovered ? 1.0 : 0.9
+                    Behavior on opacity { NumberAnimation { duration: 140 } }
+                }
+                onClicked: {
+                    doLogin()
+                    if (lastError.length > 0)
+                        console.warn("Login failed:", lastError)
+                }
+            }
+
+            // Theme
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6 * uiScale
+                Text { text: "Theme"; color: "#CCCCCC"; font.pixelSize: 12 * uiScale }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 46 * uiScale
+                    radius: 12 * uiScale
+                    color: "#1F00AAFF"
+                    border.color: "#66FFFFFF"
+                    border.width: 1.0
+                    ComboBox {
+                        id: themeCombo
+                        anchors.fill: parent
+                        anchors.margins: 6 * uiScale
+                        model: ["GTK3", "GTK4", "Qt5", "Qt6", "HyprSensitivity"]
+                        onActivated: {
+                            if (typeof Style.applyTheme === "function")
+                                Style.applyTheme(themeCombo.currentText)
+                        }
+                        background: Rectangle { color: "transparent" }
+                        contentItem: Text {
+                            text: themeCombo.currentText
+                            color: "#FFFFFF"
+                            verticalAlignment: Text.AlignVCenter
+                            horizontalAlignment: Text.AlignLeft
+                            anchors.leftMargin: 10 * uiScale
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: lastError
+                color: lastError.length > 0 ? "#FF6B6B" : "transparent"
+                font.pixelSize: 12 * uiScale
+                visible: lastError.length > 0
+                horizontalAlignment: Text.AlignHCenter
             }
         }
     }
