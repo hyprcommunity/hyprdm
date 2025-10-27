@@ -234,7 +234,6 @@ function updateTwoFA() {
                     font.bold: true
                     verticalAlignment: Text.AlignVCenter
                 }
-            }
 
             // Username
             ColumnLayout {
