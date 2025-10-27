@@ -13,13 +13,6 @@ typedef struct ThemeManager ThemeManager;
 typedef struct UnidataGenerator UnidataGenerator;
 typedef struct User User;
 
-// -------------------- PanelRect --------------------
-struct PanelRect {
-    unsigned int x;
-    unsigned int y;
-    unsigned int width;
-    unsigned int height;
-};
 
 // -------------------- Layout --------------------
 enum Layout {
@@ -48,7 +41,7 @@ int layout_manager_get_panel_rect(LayoutManager* lm, struct PanelRect* out, unsi
 void layout_manager_free(LayoutManager* lm);
 
 // Rust panel name getter
-const char* layout_manager_get_panel_name(LayoutManager* lm);
+const char* layout_manager_get_panel_name(const LayoutManager* lm);
 void string_free(char* s);
 
 // -------------------- Session --------------------

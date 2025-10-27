@@ -232,43 +232,105 @@ pub extern "C" fn unidata_write_scrub(ud: *mut UnidataGenerator) -> c_int {
     let ud_ref = unsafe { &mut *ud };
     ud_ref.write_scrub().is_ok() as c_int
 }
+#[no_mangle]
+pub extern "C" fn unidata_new(scrub_path: *const c_char) -> *mut UnidataGenerator {
+    if scrub_path.is_null() {
+        return std::ptr::null_mut();
+    }
+    let c_str = unsafe { CStr::from_ptr(scrub_path) };
+    let path_str = c_str.to_string_lossy().to_string();
+    let ud = UnidataGenerator::new(&path_str);
+    Box::into_raw(Box::new(ud))
+}
 
-// -------------------- UserManager FFI --------------------
+/// -------------------- UserManager FFI --------------------
 #[no_mangle]
 pub extern "C" fn user_new(
     username: *const c_char,
     pam_service: *const c_char,
-    method: c_int,
-    secret: *const c_char
+    method: i32,
+    secret: *const c_char,
 ) -> *mut User {
-    let username_str = unsafe { CStr::from_ptr(username).to_string_lossy().to_string() };
-    let pam_service_str = unsafe { CStr::from_ptr(pam_service).to_string_lossy().to_string() };
-    let secret_str = if secret.is_null() { None } else { Some(unsafe { CStr::from_ptr(secret).to_string_lossy().to_string() }) };
+    // username
+    let username_str = unsafe {
+        if username.is_null() {
+            "".to_string()
+        } else {
+            CStr::from_ptr(username).to_string_lossy().to_string()
+        }
+    };
+
+    let pam_service_str = unsafe {
+        if pam_service.is_null() {
+            "".to_string()
+        } else {
+            CStr::from_ptr(pam_service).to_string_lossy().to_string()
+        }
+    };
+
+    let secret_str = unsafe {
+        if secret.is_null() {
+            None
+        } else {
+            Some(CStr::from_ptr(secret).to_string_lossy().to_string())
+        }
+    };
+
+    // twofactor method
     let method_enum = match method {
-        0 => TwoFactorMethod::None,
         1 => TwoFactorMethod::TOTP,
         2 => TwoFactorMethod::HOTP { counter: 0 },
         _ => TwoFactorMethod::None,
     };
-    Box::into_raw(Box::new(User::new(&username_str, &pam_service_str, method_enum, secret_str)))
+
+    // oluştur ve raw pointer olarak döndür
+    let user = User::new(&username_str, &pam_service_str, method_enum, secret_str);
+    Box::into_raw(Box::new(user))
 }
 
 #[no_mangle]
-pub extern "C" fn user_authenticate(u: *mut User, password: *const c_char) -> c_int {
-    if u.is_null() { return 0; }
+pub extern "C" fn user_set_username(u: *mut User, username: *const c_char) {
+    if u.is_null() || username.is_null() {
+        return;
+    }
     let u_ref = unsafe { &mut *u };
-    let password_str = unsafe { CStr::from_ptr(password).to_string_lossy().to_string() };
-    u_ref.authenticate(&password_str) as c_int
+    let name = unsafe { CStr::from_ptr(username) }.to_string_lossy().to_string();
+    u_ref.username = name;
 }
 
 #[no_mangle]
-pub extern "C" fn user_verify_2fa(u: *mut User, code: *const c_char) -> c_int {
-    if u.is_null() { return 0; }
-    let u_ref = unsafe { &mut *u };
-    let code_str = unsafe { CStr::from_ptr(code).to_string_lossy().to_string() };
-    let config_path = Path::new("/etc/hyprdm/hyprdm.conf"); // örnek, ihtiyaca göre değiştir
-    u_ref.verify_2fa(&code_str, config_path).into()
+pub extern "C" fn user_get_username(u: *const User) -> *mut c_char {
+    if u.is_null() {
+        return ptr::null_mut();
+    }
+    let u_ref = unsafe { &*u };
+    match CString::new(u_ref.username.clone()) {
+        Ok(cstr) => cstr.into_raw(),
+        Err(_) => ptr::null_mut(), // invalid UTF-8 safety fallback
+    }
 }
+
+#[no_mangle]
+pub extern "C" fn user_authenticate(u: *mut User, password: *const c_char) -> i32 {
+    if u.is_null() || password.is_null() {
+        return 0;
+    }
+    let u_ref = unsafe { &mut *u };
+    let password_str = unsafe { CStr::from_ptr(password) }.to_string_lossy().to_string();
+    if u_ref.authenticate(&password_str) { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "C" fn user_verify_2fa(u: *mut User, code: *const c_char) -> i32 {
+    if u.is_null() || code.is_null() {
+        return 0;
+    }
+    let u_ref = unsafe { &mut *u };
+    let code_str = unsafe { CStr::from_ptr(code) }.to_string_lossy().to_string();
+    let config_path = Path::new("/etc/hyprdm/hyprdm.conf");
+    if u_ref.verify_2fa(&code_str, config_path) { 1 } else { 0 }
+}
+
 // -------------------- Free / Drop functions --------------------
 #[no_mangle]
 pub extern "C" fn compositor_free(c: *mut Compositor) {

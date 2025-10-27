@@ -41,22 +41,38 @@ If you want to install the HyprDM-greeterd:
 cd gui-api/greeterd
 ````
 
-If you're building with Makefile:
+## 🛠️ Build Instructions
+
+### 🔧 Using Makefile
 
 ```bash
-make
-```
+# Build (Release mode — default)
+make -j$(nproc)
 
-If you're building with CMakeLists.txt:
+# Build (Debug mode)
+make MODE=debug -j$(nproc)
+
+# Install
+sudo make install
+
+# Clean build artifacts
+make clean
+````
+
+### ⚙️ Using CMake
 
 ```bash
-mkdir build
-cd build
-cmake ../
+# Configure (Release build)
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+
+# Configure (Debug build)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j$(nproc)
+
+# Install binary
+sudo cmake --install build
 ```
-
-The GUI interfaces are developed by HyprCommunity. Hyproman and Narval interfaces are distributed under the BSD3 "Claude" license. Hyproman and Narval interface includes various features, but it's currently under Narval development and will be available soon.
-
 
 Hyproman interface:
 <img src="/interfaces-examples/Hyproman.png" alt="HyprlandDM" width="1200" height="1200"/>
